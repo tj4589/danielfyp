@@ -1,0 +1,287 @@
+:root {
+    /* Bootstrap Overrides */
+    --bs-primary: #10B981; /* Futuristic Light Green */
+    --bs-primary-rgb: 16, 185, 129;
+    --bs-body-bg: #FAFAFA;
+    --bs-font-sans-serif: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --bs-border-radius: 14px;
+    --bs-border-radius-sm: 8px;
+    --bs-border-color: #E5E7EB;
+
+    /* Custom Variables */
+    --delighted: #10B981;
+    --satisfied: #3B82F6;
+    --chart-neutral: #9CA3AF;
+    --frustrated: #F59E0B;
+    --angry: #EF4444;
+}
+
+[data-bs-theme="dark"] {
+    --bs-body-bg: #0B0F19;
+    --bs-body-color: #F9FAFB;
+    --bs-border-color: #1F2937;
+    
+    /* Override card backgrounds for dark mode */
+    --bs-card-bg: #111827;
+    --bs-tertiary-bg: #111827;
+    --bs-light: #1F2937;
+    --bs-secondary-bg-subtle: #1F2937;
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
+}
+
+/* Auth Card Styles */
+.auth-wrapper {
+    background: radial-gradient(circle at top right, rgba(16, 185, 129, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
+}
+
+.auth-card {
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1), 0 0 40px -10px rgba(16, 185, 129, 0.1);
+}
+
+[data-bs-theme="dark"] .auth-card {
+    background: rgba(17, 24, 39, 0.8);
+    box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5), 0 0 40px -10px rgba(16, 185, 129, 0.15);
+}
+
+/* Input Fields Styling for Futuristic feel */
+.form-control:focus {
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    border-color: var(--bs-primary);
+}
+
+/* Card Overrides for softer shadows */
+.card {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+[data-bs-theme="dark"] .card {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Status Dot */
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--bs-primary);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+/* Custom Textarea */
+.custom-textarea {
+    resize: none;
+}
+.custom-textarea:focus {
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+/* Upload Zone */
+.upload-zone {
+    cursor: pointer;
+    transition: all 0.2s;
+    background-color: var(--bs-body-bg);
+}
+.upload-zone:hover, .upload-zone.drag-active {
+    border-color: var(--bs-primary) !important;
+    background-color: rgba(16, 185, 129, 0.03);
+}
+[data-bs-theme="dark"] .upload-zone:hover, 
+[data-bs-theme="dark"] .upload-zone.drag-active {
+    background-color: rgba(16, 185, 129, 0.1);
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(250, 250, 250, 0.8);
+    backdrop-filter: blur(6px);
+    z-index: 5;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+.loading-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+[data-bs-theme="dark"] .loading-overlay {
+    background-color: rgba(11, 15, 25, 0.8);
+}
+
+.dashboard-content {
+    transition: opacity 0.3s ease;
+}
+
+/* Donut Chart */
+.circle {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    transition: stroke-width 0.2s, filter 0.2s;
+    cursor: pointer;
+}
+.circle:hover {
+    stroke-width: 5;
+    filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.1));
+}
+.circle.angry { stroke: var(--angry); }
+.circle.frustrated { stroke: var(--frustrated); }
+.circle.neutral { stroke: var(--chart-neutral); }
+.circle.satisfied { stroke: var(--satisfied); }
+.circle.delighted { stroke: var(--delighted); }
+
+.chart-center-text {
+    fill: var(--bs-body-color);
+}
+
+/* Animations for Issue Bars */
+@keyframes fillBar {
+    from { width: 0; }
+}
+.issue-bar {
+    animation: fillBar 1s ease-out forwards;
+}
+
+/* AI Insight Box */
+.ai-insight-box {
+    background: linear-gradient(145deg, rgba(16,185,129,0.05) 0%, rgba(16,185,129,0.02) 100%);
+    border-color: rgba(16, 185, 129, 0.2) !important;
+}
+[data-bs-theme="dark"] .ai-insight-box {
+    background: linear-gradient(145deg, rgba(16,185,129,0.1) 0%, rgba(16,185,129,0.05) 100%);
+    border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+/* Table Customizations */
+.custom-table th {
+    background-color: var(--bs-tertiary-bg);
+}
+[data-bs-theme="dark"] .custom-table th {
+    background-color: var(--bs-dark);
+}
+[data-bs-theme="dark"] .custom-table tbody tr:hover td {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Issue Matrix Expanded State */
+.issue-matrix-expanded {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%; max-width: 800px;
+    z-index: 1050;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+    transition: all 0.3s ease;
+}
+.modal-backdrop-custom {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1040;
+    display: none;
+}
+.modal-backdrop-custom.show {
+    display: block;
+}
+
+/* Glassmorphism Card */
+.glass-card {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(16, 185, 129, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+}
+
+[data-bs-theme="dark"] .glass-card {
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Glow Effects */
+.glow-on-focus:focus {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+    border-color: var(--bs-primary);
+}
+
+/* Laser Scan Animation for Submit Button */
+.btn-laser {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-laser::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transform: skewX(-20deg);
+    transition: all 0s;
+}
+
+.btn-laser:hover::after {
+    animation: laserScan 0.8s ease-in-out infinite;
+}
+
+@keyframes laserScan {
+    0% { left: -100%; }
+    100% { left: 200%; }
+}
+
+/* Terminal Processing State */
+.terminal-output {
+    background-color: #0B0F19;
+    color: #10B981;
+    font-family: 'Courier New', Courier, monospace;
+    padding: 1rem;
+    border-radius: var(--bs-border-radius-sm);
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+    height: 120px;
+    overflow-y: auto;
+    font-size: 0.9rem;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    text-align: left;
+}
+
+.terminal-line {
+    margin-bottom: 0.5rem;
+    white-space: pre-wrap;
+}
+
+/* Dataset Preview */
+.dataset-preview {
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 0.85rem;
+}
+
+/* Quality Score Pill */
+.quality-score {
+    transition: all 0.3s ease;
+}
+.quality-score.poor { color: var(--frustrated); }
+.quality-score.good { color: var(--satisfied); }
+.quality-score.excellent { color: var(--delighted); }
+
+/* Recent Submissions */
+.recent-item {
+    transition: background-color 0.2s ease;
+    border-left: 3px solid transparent;
+}
+.recent-item:hover {
+    background-color: var(--bs-secondary-bg-subtle);
+    border-left-color: var(--bs-primary);
+}
