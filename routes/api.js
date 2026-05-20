@@ -1,12 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const Feedback = require('../models/Feedback');
+
+// Fallback in-memory database
+let feedbackDB = [];
+let idCounter = 1;
 
 // GET /api/feedback - Retrieve all feedback
 router.get('/feedback', async (req, res) => {
     try {
-        const feedback = await Feedback.find().sort({ createdAt: -1 });
-        res.json(feedback);
+        const sorted = [...feedbackDB].sort((a, b) => b.createdAt - a.createdAt);
+        res.json(sorted);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch feedback' });
     }
@@ -16,8 +19,8 @@ router.get('/feedback', async (req, res) => {
 router.get('/user/feedback', async (req, res) => {
     try {
         // In a real app, this would filter by the logged-in user's ID
-        const feedback = await Feedback.find().sort({ createdAt: -1 }).limit(5);
-        res.json(feedback);
+        const sorted = [...feedbackDB].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
+        res.json(sorted);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch user feedback' });
     }
@@ -81,21 +84,23 @@ router.post('/analyze', async (req, res) => {
         // Truncate snippet if too long
         const snippet = text.length > 80 ? text.substring(0, 77) + '...' : text;
 
-        // Create new feedback document
-        const newFeedback = new Feedback({
+        // Create new feedback document mock
+        const newFeedback = {
+            _id: idCounter++,
             snippet,
             rating,
             emotion,
             confidence,
-            sentiment
-        });
+            sentiment,
+            createdAt: new Date()
+        };
 
         // Save to DB
-        const savedFeedback = await newFeedback.save();
+        feedbackDB.push(newFeedback);
 
         // Delay to simulate processing time
         setTimeout(() => {
-            res.status(201).json(savedFeedback);
+            res.status(201).json(newFeedback);
         }, 1500);
 
     } catch (err) {

@@ -24,14 +24,10 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Database Connection & Server Start
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/cx-intelligence')
-    .then(() => {
-        console.log('Connected to MongoDB successfully.');
-        app.listen(PORT, () => {
-            console.log(`Server is running on http://localhost:${PORT}`);
-        });
-    })
-    .catch((err) => {
-        console.error('MongoDB connection error:', err);
-    });
+// Database Connection
+// Since MongoDB is not installed locally, we are using an in-memory array in api.js for this demo.
+console.log('Skipping MongoDB connection. Using in-memory fallback database.');
+
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});
