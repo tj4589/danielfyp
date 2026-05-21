@@ -24,10 +24,21 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Database Connection
-// Since MongoDB is not installed locally, we are using an in-memory array in api.js for this demo.
-console.log('Skipping MongoDB connection. Using in-memory fallback database.');
+/* -------------------  MongoDB connection ------------------- */
+// Prefer Atlas; fallback to local MongoDB if Atlas URI not provided
+const primaryUri = process.env.MONGODB_URI;            // Atlas connection string
+const fallbackUri = process.env.LOCAL_MONGODB_URI;    // Local MongoDB URI
+const mongoUri = primaryUri || fallbackUri;
 
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-});
+mongoose
+  .connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => {
+    console.log('✅ Connected to MongoDB successfully.');
+    // Start server only after DB connection is ready
+    app.listen(PORT, () => {
+      console.log(`🚀 Server is running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('❌ MongoDB connection error:', err);
+  });
