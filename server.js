@@ -31,12 +31,20 @@ const fallbackUri = process.env.LOCAL_MONGODB_URI;    // Local MongoDB URI
 const mongoUri = primaryUri || fallbackUri;
 
 mongoose
-  .connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(mongoUri) // newer driver defaults, no deprecated options needed
   .then(() => {
     console.log('✅ Connected to MongoDB successfully.');
     // Start server only after DB connection is ready
-    app.listen(PORT, () => {
-      console.log(`🚀 Server is running on http://localhost:${PORT}`);
+    const server = app.listen(PORT, () => console.log(`🚀 Server is running on http://localhost:${PORT}`));
+    // Graceful handling of port conflict
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use. Choose a different PORT or stop the other process.`);
+        process.exit(1);
+      } else {
+        console.error('❌ Server error:', err);
+        process.exit(1);
+      }
     });
   })
   .catch((err) => {
