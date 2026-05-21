@@ -35,6 +35,7 @@ mongoose
   .then(() => {
     console.log('✅ Connected to MongoDB successfully.');
     // Start server only after DB connection is ready
+<<<<<<< Updated upstream
     const server = app.listen(PORT, () => console.log(`🚀 Server is running on http://localhost:${PORT}`));
     // Graceful handling of port conflict
     server.on('error', (err) => {
@@ -45,6 +46,11 @@ mongoose
         console.error('❌ Server error:', err);
         process.exit(1);
       }
+=======
+    const PORT = process.env.PORT || 3000; 
+    app.listen(PORT, () => {
+      console.log(`🚀 Server is running on http://localhost:${PORT}`);
+>>>>>>> Stashed changes
     });
   })
   .catch((err) => {
