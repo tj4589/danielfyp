@@ -1,14 +1,37 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
 
-// Fallback in-memory database
-let feedbackDB = [];
+// Fallback JSON database file path
+const dbPath = path.join(__dirname, '../database.json');
+
+// Helper function to read the database
+function getDB() {
+    if (!fs.existsSync(dbPath)) {
+        fs.writeFileSync(dbPath, JSON.stringify([]));
+    }
+    const data = fs.readFileSync(dbPath, 'utf8');
+    return JSON.parse(data);
+}
+
+// Helper function to save to the database
+function saveDB(data) {
+    fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
+}
+
+// Initialize ID counter based on existing data
 let idCounter = 1;
+const initialDb = getDB();
+if (initialDb.length > 0) {
+    idCounter = Math.max(...initialDb.map(item => item._id || 0)) + 1;
+}
 
 // GET /api/feedback - Retrieve all feedback
 router.get('/feedback', async (req, res) => {
     try {
-        const sorted = [...feedbackDB].sort((a, b) => b.createdAt - a.createdAt);
+        const feedbackDB = getDB();
+        const sorted = [...feedbackDB].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         res.json(sorted);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch feedback' });
@@ -18,8 +41,8 @@ router.get('/feedback', async (req, res) => {
 // GET /api/user/feedback - Retrieve recent feedback for the user feed
 router.get('/user/feedback', async (req, res) => {
     try {
-        // In a real app, this would filter by the logged-in user's ID
-        const sorted = [...feedbackDB].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
+        const feedbackDB = getDB();
+        const sorted = [...feedbackDB].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
         res.json(sorted);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch user feedback' });
@@ -48,16 +71,12 @@ router.post('/analyze', async (req, res) => {
             return res.status(400).json({ error: 'Review text is required' });
         }
 
-        // --- Mock AI Intelligence Logic ---
-        // In a real application, this would call an NLP service or LLM.
-        
         const textLower = text.toLowerCase();
         let rating = 3;
         let emotion = 'Neutral';
         let sentiment = 'Neutral';
         let confidence = Math.floor(Math.random() * (99 - 80 + 1) + 80); // 80-99%
 
-        // Simple keyword-based mock analysis
         const positiveKeywords = ['amazing', 'great', 'love', 'excellent', 'good', 'best', 'smooth', 'exceeded'];
         const negativeKeywords = ['bad', 'terrible', 'upset', 'hate', 'delayed', 'slow', 'poor', 'ignored', 'frustrated'];
 
@@ -81,10 +100,8 @@ router.post('/analyze', async (req, res) => {
             confidence = Math.floor(Math.random() * (79 - 60 + 1) + 60); // lower confidence for mixed
         }
 
-        // Truncate snippet if too long
         const snippet = text.length > 80 ? text.substring(0, 77) + '...' : text;
 
-        // Create new feedback document mock
         const newFeedback = {
             _id: idCounter++,
             snippet,
@@ -95,8 +112,10 @@ router.post('/analyze', async (req, res) => {
             createdAt: new Date()
         };
 
-        // Save to DB
+        // Save to DB file
+        const feedbackDB = getDB();
         feedbackDB.push(newFeedback);
+        saveDB(feedbackDB);
 
         // Delay to simulate processing time
         setTimeout(() => {
