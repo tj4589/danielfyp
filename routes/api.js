@@ -42,10 +42,7 @@ router.post('/login', (req, res) => {
 
 router.post('/analyze',
   [
-    body('text').isString().withMessage('Review text must be a string'),
-    body('name').notEmpty().withMessage('Name is required'),
-    body('email').isEmail().withMessage('Valid email required'),
-    body('phone').optional().isString().withMessage('Phone must be a string')
+    body('text').isString().withMessage('Review text must be a string')
   ],
   (req, res) => {
     const errors = validationResult(req);
