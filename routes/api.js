@@ -127,4 +127,52 @@ router.get('/feedback/:id',
       });
   });
 
+const multer = require('multer');
+const csv = require('csv-parser');
+const fs = require('fs');
+const path = require('path');
+const ADMIN_TOKEN = 'admin-secret'; // Simple admin token for CSV uploads
+
+// Multer configuration for file uploads
+const upload = multer({ dest: path.join(__dirname, '../uploads/') });
+
+// CSV upload endpoint – secured with admin token
+router.post('/csv', upload.single('file'), (req, res) => {
+    const token = req.headers['x-admin-token'];
+    if (token !== ADMIN_TOKEN) {
+        return res.status(403).json({ error: 'Invalid admin token' });
+    }
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+    const results = [];
+    fs.createReadStream(req.file.path)
+        .pipe(csv())
+        .on('data', (data) => results.push(data))
+        .on('end', () => {
+            // Map CSV rows to Feedback documents
+            const feedbacks = results.map(row => ({
+                snippet: row.snippet || row.Snippet || '',
+                rating: Number(row.rating) || 0,
+                emotion: row.emotion || '',
+                confidence: Number(row.confidence) || 0,
+                sentiment: row.sentiment || '',
+                name: row.name || '',
+                email: row.email || '',
+                phone: row.phone || '',
+                createdAt: new Date()
+            }));
+            Feedback.insertMany(feedbacks)
+                .then(() => {
+                    // Clean up uploaded file
+                    fs.unlinkSync(req.file.path);
+                    res.json({ inserted: feedbacks.length });
+                })
+                .catch(err => {
+                    console.error('CSV upload error:', err);
+                    res.status(500).json({ error: 'Failed to insert feedback' });
+                });
+        });
+});
+
 module.exports = router;

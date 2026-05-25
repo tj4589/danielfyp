@@ -409,11 +409,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleFileUpload(file) {
-        uploadZone.querySelector('.upload-label').textContent = file.name;
-        uploadZone.querySelector('.upload-sub').textContent = 'File ready for analysis';
-        uploadZone.querySelector('.upload-icon').className = 'ph-fill ph-file-csv upload-icon text-primary';
-        uploadZone.querySelector('.upload-icon').style.color = 'var(--bs-primary)';
-    }
+    uploadZone.querySelector('.upload-label').textContent = file.name;
+    uploadZone.querySelector('.upload-sub').textContent = 'File ready for analysis';
+    uploadZone.querySelector('.upload-icon').className = 'ph-fill ph-file-csv upload-icon text-primary';
+    uploadZone.querySelector('.upload-icon').style.color = 'var(--bs-primary)';
+    // Trigger CSV upload to backend
+    uploadCsv(file);
+}
 
     if (closeInsightBtn && insightBox) {
         closeInsightBtn.addEventListener('click', () => {
