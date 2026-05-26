@@ -152,8 +152,24 @@
     // Export to global scope if needed elsewhere
     window.uploadCsv = uploadCsv;
     // Existing code continues below
-    const themeToggleBtn = document.getElementById('theme-toggle');
-            const themeToggleBtn = document.getElementById('theme-toggle');
+            // CSV Paste area - allows users to paste CSV text directly
+            const csvPasteContainer = document.createElement('div');
+            csvPasteContainer.innerHTML = `
+                <textarea id="csv-paste" class="form-control mt-2" rows="4" placeholder="Paste CSV content here (including header)"></textarea>
+                <button id="csv-paste-submit" class="btn btn-secondary mt-2">Upload Pasted CSV</button>
+            `;
+            uploadZone.parentNode.insertBefore(csvPasteContainer, uploadZone.nextSibling);
+            
+            // Handler for CSV paste upload
+            document.getElementById('csv-paste-submit').addEventListener('click', () => {
+                const csvText = document.getElementById('csv-paste').value.trim();
+                if (!csvText) { alert('Please paste CSV content first'); return; }
+                const csvFile = new File([csvText], 'pasted.csv', { type: 'text/csv' });
+                uploadCsv(csvFile);
+            });
+            // Remove duplicate themeToggleBtn declaration
+            // (previous duplicate line removed)
+
             if (themeToggleBtn) {
                 themeToggleBtn.addEventListener('click', () => {
                     const htmlElement = document.documentElement;
@@ -264,7 +280,8 @@
 
                 try {
                     // Send request
-                    const response = await fetch('/api/analyze', {
+                    console.log('Submitting review to engine:', text);
+                const response = await fetch('/api/analyze', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
