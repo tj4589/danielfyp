@@ -1,4 +1,24 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Helper to upload CSV files (used for both manual uploads and typed reviews)
+    function uploadCsv(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        // Admin token must match server-side ADMIN_TOKEN
+        fetch('/api/csv', {
+            method: 'POST',
+            headers: { 'x-admin-token': 'admin-secret' },
+            body: formData
+        })
+        .then(res => {
+            if (!res.ok) {
+                console.error('CSV upload failed', res.statusText);
+            }
+        })
+        .catch(err => console.error('Error uploading CSV:', err));
+    }
+    // Export to global scope if needed elsewhere
+    window.uploadCsv = uploadCsv;
+
     // DOM Elements
     const runAnalysisBtn = document.getElementById('run-analysis-btn');
     const loadingOverlay = document.getElementById('loading-overlay');

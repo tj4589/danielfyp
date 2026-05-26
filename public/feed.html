@@ -132,6 +132,27 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+    // Helper to upload CSV files (used for both manual uploads and typed reviews)
+    function uploadCsv(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        // Admin token must match server-side ADMIN_TOKEN
+        fetch('/api/csv', {
+            method: 'POST',
+            headers: { 'x-admin-token': 'admin-secret' },
+            body: formData
+        })
+        .then(res => {
+            if (!res.ok) {
+                console.error('CSV upload failed', res.statusText);
+            }
+        })
+        .catch(err => console.error('Error uploading CSV:', err));
+    }
+    // Export to global scope if needed elsewhere
+    window.uploadCsv = uploadCsv;
+    // Existing code continues below
+    const themeToggleBtn = document.getElementById('theme-toggle');
             const themeToggleBtn = document.getElementById('theme-toggle');
             if (themeToggleBtn) {
                 themeToggleBtn.addEventListener('click', () => {
