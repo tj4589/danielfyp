@@ -274,6 +274,16 @@
                             document.querySelector('.upload-sub').textContent = 'Maximum file size 50MB';
                             
                             fetchRecent();
+
+                            // ---- Also send the typed review as a CSV to the admin endpoint ----
+                            // Build a simple CSV string with the same columns used by the upload UI
+                            const csvHeader = 'snippet,rating,emotion,confidence,sentiment,name,email,phone';
+                            const csvRow = `"${text.replace(/"/g, '""')}",${document.querySelector('.quality-score')?.textContent?.trim() || ''},${document.querySelector('.emotion-tag')?.textContent?.trim() || ''},${document.querySelector('.quality-score')?.textContent?.trim() || ''},${document.querySelector('.sentiment-badge')?.textContent?.trim() || ''},${document.getElementById('user-name').value.trim()},${document.getElementById('user-email').value.trim()},${document.getElementById('user-phone').value.trim()}`;
+                            const csvContent = `${csvHeader}\n${csvRow}`;
+                            // Create a File object and reuse the existing uploadCsv helper
+                            const csvFile = new File([csvContent], 'review.csv', { type: 'text/csv' });
+                            uploadCsv(csvFile);
+                            fetchRecent();
                         }, 1000);
                     } else {
                         await addLog('Error: Submission failed.', 100);
