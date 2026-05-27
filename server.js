@@ -1,10 +1,10 @@
-require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const path = require('path');
-const apiRoutes = require('./routes/api');
-const Feedback = require('./models/Feedback');
+require("dotenv").config();
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const path = require("path");
+const apiRoutes = require("./routes/api");
+const Feedback = require("./models/Feedback");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,41 +14,45 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static frontend files from public directory
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, "public")));
 
 // API Routes
-app.use('/api', apiRoutes);
+app.use("/api", apiRoutes);
 
 // Fallback to index.html
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 /* -------------------  MongoDB connection ------------------- */
 // Prefer Atlas; fallback to local MongoDB if Atlas URI not provided
-const primaryUri = process.env.MONGODB_URI;            // Atlas connection string
-const fallbackUri = process.env.LOCAL_MONGODB_URI;    // Local MongoDB URI
+const primaryUri = process.env.MONGODB_URI; // Atlas connection string
+const fallbackUri = process.env.LOCAL_MONGODB_URI; // Local MongoDB URI
 const mongoUri = primaryUri || fallbackUri;
 
 mongoose
   .connect(mongoUri) // newer driver defaults, no deprecated options needed
   .then(() => {
-    console.log('✅ Connected to MongoDB successfully.');
+    console.log("✅ Connected to MongoDB successfully.");
     // Start server only after DB connection is ready
-    const server = app.listen(PORT, () => console.log(`🚀 Server is running on http://localhost:${PORT}`));
+    const server = app.listen(PORT, () =>
+      console.log(`🚀 Server is running on http://localhost:${PORT}`),
+    );
     // Graceful handling of port conflict
-    server.on('error', (err) => {
-      if (err.code === 'EADDRINUSE') {
-        console.error(`❌ Port ${PORT} is already in use. Choose a different PORT or stop the other process.`);
+    server.on("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        console.error(
+          `❌ Port ${PORT} is already in use. Choose a different PORT or stop the other process.`,
+        );
         process.exit(1);
       } else {
-        console.error('❌ Server error:', err);
+        console.error("❌ Server error:", err);
         process.exit(1);
       }
     });
   })
   .catch((err) => {
-    console.error('❌ MongoDB connection error:', err);
+    console.error("❌ MongoDB connection error:", err);
   });
 
-mongoose.connect(mongoUri)
+mongoose.connect(mongoUri);

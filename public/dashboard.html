@@ -1,57 +1,65 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" data-bs-theme="light">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CX Intelligence System | Admin</title>
     <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <!-- Bootstrap 5.3 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css" />
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <!-- Chart.js for Trend Tracking -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<script>
-let trendChart;
+  </head>
+  <script>
+    let trendChart;
 
-document.addEventListener("DOMContentLoaded", () => {
-    initTrendChart();
-    loadDashboard();
-});
+    document.addEventListener("DOMContentLoaded", () => {
+      initTrendChart();
+      loadDashboard();
+    });
 
-function initTrendChart() {
-    const ctx = document.getElementById("trendChart");
+    function initTrendChart() {
+      const ctx = document.getElementById("trendChart");
 
-    if (!ctx) return;
+      if (!ctx) return;
 
-    trendChart = new Chart(ctx, {
+      trendChart = new Chart(ctx, {
         type: "line",
         data: {
-            labels: [],
-            datasets: [{
-                label: "Feedback Volume",
-                data: [],
-                tension: 0.35,
-                borderWidth: 2,
-                fill: false
-            }]
+          labels: [],
+          datasets: [
+            {
+              label: "Feedback Volume",
+              data: [],
+              tension: 0.35,
+              borderWidth: 2,
+              fill: false,
+            },
+          ],
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false
-        }
-    });
-}
+          responsive: true,
+          maintainAspectRatio: false,
+        },
+      });
+    }
 
-async function loadDashboard() {
-    try {
-        const res = await fetch('/api/feedback');
+    async function loadDashboard() {
+      try {
+        const res = await fetch("/api/feedback");
         const feedbacks = await res.json();
 
         updateMetrics(feedbacks);
@@ -59,606 +67,897 @@ async function loadDashboard() {
         updateIssueMatrix(feedbacks);
         updateConfidence(feedbacks);
         updateAILog(feedbacks);
-
-    } catch (error) {
+      } catch (error) {
         console.error(error);
+      }
     }
-}
 
-function updateMetrics(feedbacks) {
-    const total = feedbacks.length;
-    let ratingTotal = 0;
-    let positive = 0;
-    let critical = 0;
+    function updateMetrics(feedbacks) {
+      const total = feedbacks.length;
+      let ratingTotal = 0;
+      let positive = 0;
+      let critical = 0;
 
-    feedbacks.forEach(item => {
-    const sentiment = (
-        item.sentiment || ''
-    ).toLowerCase();
+      feedbacks.forEach((item) => {
+        const sentiment = (item.sentiment || "").toLowerCase();
 
-    const text = (
-        item.review ||
-        ''
-    ).toLowerCase();
+        const text = (item.review || "").toLowerCase();
 
-    if (
-        sentiment === "critical" ||
-        text.includes("refund") ||
-        text.includes("angry") ||
-        text.includes("terrible") ||
-        text.includes("worst")
-    ) {
-        critical++;
+        if (
+          sentiment === "critical" ||
+          text.includes("refund") ||
+          text.includes("angry") ||
+          text.includes("terrible") ||
+          text.includes("worst")
+        ) {
+          critical++;
+        }
+      });
+
+      const avgRating = total ? (ratingTotal / total).toFixed(1) : "0.0";
+      const healthScore = total ? Math.round((positive / total) * 100) : 0;
+
+      document.getElementById("metric-total").textContent = total;
+      document.getElementById("metric-rating").textContent = avgRating;
+      document.getElementById("metric-health").textContent = healthScore;
+      document.getElementById("metric-critical").textContent = critical;
     }
-});
 
-    const avgRating = total ? (ratingTotal / total).toFixed(1) : "0.0";
-    const healthScore = total ? Math.round((positive / total) * 100) : 0;
+    function updateTrendChart(feedbacks) {
+      const grouped = {};
 
-    document.getElementById("metric-total").textContent = total;
-    document.getElementById("metric-rating").textContent = avgRating;
-    document.getElementById("metric-health").textContent = healthScore;
-    document.getElementById("metric-critical").textContent = critical;
-}
-
-function updateTrendChart(feedbacks) {
-    const grouped = {};
-
-    feedbacks.forEach(item => {
+      feedbacks.forEach((item) => {
         const date = new Date(item.createdAt).toLocaleDateString();
 
         grouped[date] = (grouped[date] || 0) + 1;
-    });
+      });
 
-    trendChart.data.labels = Object.keys(grouped);
-    trendChart.data.datasets[0].data = Object.values(grouped);
+      trendChart.data.labels = Object.keys(grouped);
+      trendChart.data.datasets[0].data = Object.values(grouped);
 
-    trendChart.update();
-}
+      trendChart.update();
+    }
 
+    function updateConfidence(feedbacks) {
+      if (!feedbacks.length) return;
 
-function updateConfidence(feedbacks) {
-    if (!feedbacks.length) return;
+      let score = 0;
 
-    let score = 0;
+      feedbacks.forEach((item) => {
+        const sentiment = (item.sentiment || "").toLowerCase();
 
-    feedbacks.forEach(item => {
-        const sentiment = (item.sentiment || '').toLowerCase();
-
-        if (sentiment === 'positive') score += 96;
-        else if (sentiment === 'neutral') score += 88;
-        else if (
-            sentiment === 'negative' ||
-            sentiment === 'critical'
-        ) score += 82;
+        if (sentiment === "positive") score += 96;
+        else if (sentiment === "neutral") score += 88;
+        else if (sentiment === "negative" || sentiment === "critical")
+          score += 82;
         else score += 90;
-    });
+      });
 
-    const average = Math.round(score / feedbacks.length);
+      const average = Math.round(score / feedbacks.length);
 
-    document.getElementById(
-        "confidence-score"
-    ).textContent = average + "%";
-}
+      document.getElementById("confidence-score").textContent = average + "%";
+    }
 
-function updateIssueMatrix(feedbacks) {
-    const issueKeywords = {
-        delivery: [
-            "delivery",
-            "delay",
-            "late",
-            "shipping",
-            "dispatch"
-        ],
+    function updateIssueMatrix(feedbacks) {
+      const issueKeywords = {
+        delivery: ["delivery", "delay", "late", "shipping", "dispatch"],
 
-        support: [
-            "support",
-            "agent",
-            "response",
-            "customer care"
-        ],
+        support: ["support", "agent", "response", "customer care"],
 
-        payment: [
-            "payment",
-            "refund",
-            "billing",
-            "charged"
-        ]
-    };
+        payment: ["payment", "refund", "billing", "charged"],
+      };
 
-    const issueCount = {
+      const issueCount = {
         delivery: 0,
         support: 0,
-        payment: 0
-    };
+        payment: 0,
+      };
 
-    feedbacks.forEach(item => {
-        const text = (
-            item.review ||
-            item.snippet ||
-            ''
-        ).toLowerCase();
+      feedbacks.forEach((item) => {
+        const text = (item.review || item.snippet || "").toLowerCase();
 
         for (const issue in issueKeywords) {
-            if (
-                issueKeywords[issue].some(word =>
-                    text.includes(word)
-                )
-            ) {
-                issueCount[issue]++;
-            }
+          if (issueKeywords[issue].some((word) => text.includes(word))) {
+            issueCount[issue]++;
+          }
         }
-    });
+      });
 
-    const total = feedbacks.length || 1;
+      const total = feedbacks.length || 1;
 
-    document.getElementById("delivery-percent").textContent =
+      document.getElementById("delivery-percent").textContent =
         Math.round((issueCount.delivery / total) * 100) + "%";
 
-    document.getElementById("support-percent").textContent =
+      document.getElementById("support-percent").textContent =
         Math.round((issueCount.support / total) * 100) + "%";
 
-    document.getElementById("payment-percent").textContent =
+      document.getElementById("payment-percent").textContent =
         Math.round((issueCount.payment / total) * 100) + "%";
 
-    populateIssueDetails(issueCount);
-}
+      populateIssueDetails(issueCount);
+    }
 
-function populateIssueDetails(issueCount) {
-    document.getElementById("delivery-details").innerHTML = `
+    function populateIssueDetails(issueCount) {
+      document.getElementById("delivery-details").innerHTML = `
         <strong>${issueCount.delivery}</strong> mentions detected.
         <br>
         Most linked to delayed shipping and dispatch timing.
     `;
 
-    document.getElementById("support-details").innerHTML = `
+      document.getElementById("support-details").innerHTML = `
         <strong>${issueCount.support}</strong> mentions detected.
         <br>
         Mainly related to response time and support interaction quality.
     `;
 
-    document.getElementById("payment-details").innerHTML = `
+      document.getElementById("payment-details").innerHTML = `
         <strong>${issueCount.payment}</strong> mentions detected.
         <br>
         Mostly billing complaints, refunds and payment confirmation delays.
     `;
-}
-
-function toggleIssue(id) {
-    const element = document.getElementById(id);
-
-    if (
-        element.style.display === "none" ||
-        element.style.display === ""
-    ) {
-        element.style.display = "block";
-    } else {
-        element.style.display = "none";
     }
-}
 
-function updateAILog(feedbacks) {
-    const table = document.getElementById("feedback-table-body");
+    function toggleIssue(id) {
+      const element = document.getElementById(id);
 
-    table.innerHTML = "";
+      if (element.style.display === "none" || element.style.display === "") {
+        element.style.display = "block";
+      } else {
+        element.style.display = "none";
+      }
+    }
 
-    feedbacks
+    function updateAILog(feedbacks) {
+      const table = document.getElementById("feedback-table-body");
+
+      table.innerHTML = "";
+
+      feedbacks
         .slice()
         .reverse()
-        .forEach(item => {
-            table.innerHTML += `
+        .forEach((item) => {
+          table.innerHTML += `
                 <tr>
-                    <td class="ps-4">${item.review || item.snippet || ''}</td>
-                    <td>${item.rating || '-'}</td>
-                    <td>${item.emotion || '-'}</td>
+                    <td class="ps-4">${item.review || item.snippet || ""}</td>
+                    <td>${item.rating || "-"}</td>
+                    <td>${item.emotion || "-"}</td>
                     <td>${item.confidence || 90}%</td>
-                    <td class="pe-4 text-end">${item.sentiment || '-'}</td>
+                    <td class="pe-4 text-end">${item.sentiment || "-"}</td>
                 </tr>
             `;
         });
-}
-</script>
-<body>
+    }
+  </script>
+  <body>
     <div id="app" class="min-vh-100 d-flex flex-column">
-        
-        <!-- Top Navigation Bar -->
-        <header class="d-flex justify-content-between align-items-center px-4 py-3 border-bottom sticky-top bg-body z-3">
-            <div class="d-flex align-items-center gap-2 text-primary">
-                <i class="ph ph-chart-polar fs-4"></i>
-                <h1 class="h6 mb-0 fw-semibold text-body">CX Intelligence System <span class="badge bg-primary text-white ms-2 rounded-pill fw-normal">Admin</span></h1>
-            </div>
-            
-            <div class="d-flex align-items-center gap-4">
-                <button id="theme-toggle" class="btn btn-sm btn-link text-body p-0 text-decoration-none" title="Toggle Dark Mode">
-                    <i class="ph ph-moon fs-5"></i>
-                </button>
-                <div class="small text-muted d-none d-sm-block">Last analyzed: just now</div>
-                <div class="d-flex align-items-center gap-2 small fw-medium border rounded-pill px-3 py-1 bg-body shadow-sm">
-                    <span class="status-dot"></span>
-                    System Online
+      <!-- Top Navigation Bar -->
+      <header
+        class="d-flex justify-content-between align-items-center px-4 py-3 border-bottom sticky-top bg-body z-3"
+      >
+        <div class="d-flex align-items-center gap-2 text-primary">
+          <i class="ph ph-chart-polar fs-4"></i>
+          <h1 class="h6 mb-0 fw-semibold text-body">
+            CX Intelligence System
+            <span
+              class="badge bg-primary text-white ms-2 rounded-pill fw-normal"
+              >Admin</span
+            >
+          </h1>
+        </div>
+
+        <div class="d-flex align-items-center gap-4">
+          <button
+            id="theme-toggle"
+            class="btn btn-sm btn-link text-body p-0 text-decoration-none"
+            title="Toggle Dark Mode"
+          >
+            <i class="ph ph-moon fs-5"></i>
+          </button>
+          <div class="small text-muted d-none d-sm-block">
+            Last analyzed: just now
+          </div>
+          <div
+            class="d-flex align-items-center gap-2 small fw-medium border rounded-pill px-3 py-1 bg-body shadow-sm"
+          >
+            <span class="status-dot"></span>
+            System Online
+          </div>
+
+          <!-- Notification Bell -->
+          <div class="dropdown">
+            <button
+              class="btn btn-sm btn-link text-body p-0 text-decoration-none position-relative"
+              type="button"
+              id="notificationDropdown"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              <i class="ph ph-bell fs-5"></i>
+              <span
+                id="notification-badge"
+                class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle d-none"
+              >
+                <span class="visually-hidden">New alerts</span>
+              </span>
+            </button>
+            <ul
+              class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2"
+              aria-labelledby="notificationDropdown"
+              id="notification-list"
+              style="width: 300px; max-height: 400px; overflow-y: auto"
+            >
+              <li><h6 class="dropdown-header">Notifications</h6></li>
+              <li>
+                <div
+                  class="dropdown-item text-muted small py-3 text-center"
+                  id="no-notifications"
+                >
+                  No new notifications
                 </div>
-                
-                <!-- Notification Bell -->
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-link text-body p-0 text-decoration-none position-relative" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="ph ph-bell fs-5"></i>
-                        <span id="notification-badge" class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle d-none">
-                            <span class="visually-hidden">New alerts</span>
-                        </span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2" aria-labelledby="notificationDropdown" id="notification-list" style="width: 300px; max-height: 400px; overflow-y: auto;">
-                        <li><h6 class="dropdown-header">Notifications</h6></li>
-                        <li><div class="dropdown-item text-muted small py-3 text-center" id="no-notifications">No new notifications</div></li>
-                    </ul>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Logout Button -->
+          <a
+            href="/"
+            class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1 rounded-pill px-3"
+          >
+            <i class="ph ph-sign-out"></i> Logout
+          </a>
+        </div>
+      </header>
+
+      <!-- Main Content Layout -->
+      <main class="container-fluid py-4 flex-grow-1" style="max-width: 1600px">
+        <div class="row g-4">
+          <!-- Left Panel (Control Center) -->
+          <aside class="col-lg-3 d-flex flex-column gap-4">
+            <button
+              class="btn btn-primary w-100 py-3 d-flex align-items-center justify-content-center gap-2 shadow-sm"
+              id="run-analysis-btn"
+            >
+              <span class="btn-text fw-medium">Run Intelligence Analysis</span>
+              <i class="ph ph-magic-wand"></i>
+            </button>
+          </aside>
+
+          <!-- Right Panel (Insights Dashboard) -->
+          <section class="col-lg-9 position-relative">
+            <!-- Overlay for Loading State -->
+            <div
+              class="loading-overlay rounded d-flex flex-column align-items-center justify-content-center gap-3"
+              id="loading-overlay"
+            >
+              <div
+                class="spinner-border text-primary"
+                role="status"
+                style="width: 2.5rem; height: 2.5rem"
+              >
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p id="loading-text" class="fw-medium mb-0">
+                Analyzing customer feedback...
+              </p>
+            </div>
+
+            <div
+              class="dashboard-content d-flex flex-column gap-4"
+              id="dashboard-content"
+            >
+              <!-- Row 1: Analytics Cards -->
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <div class="card shadow-sm border h-100">
+                    <div
+                      class="card-body py-3 px-4 d-flex flex-column justify-content-center"
+                    >
+                      <div
+                        class="text-muted small fw-medium mb-1 d-flex align-items-center gap-2"
+                      >
+                        <i class="ph ph-files"></i> Total Analyzed
+                      </div>
+                      <div class="fs-4 fw-bold text-body" id="metric-total">
+                        0
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card shadow-sm border h-100">
+                    <div
+                      class="card-body py-3 px-4 d-flex flex-column justify-content-center"
+                    >
+                      <div
+                        class="text-muted small fw-medium mb-1 d-flex align-items-center gap-2"
+                      >
+                        <i class="ph ph-star"></i> Average Rating
+                      </div>
+                      <div
+                        class="fs-4 fw-bold text-body d-flex align-items-center gap-2"
+                      >
+                        <span id="metric-rating">0.0</span>
+                        <span
+                          class="badge bg-success-subtle text-success fs-6 px-2 py-1 d-none"
+                          id="metric-rating-trend"
+                          ><i class="ph-fill ph-caret-up"></i
+                        ></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div
+                    class="card shadow-sm border h-100 position-relative overflow-hidden"
+                  >
+                    <div
+                      class="position-absolute top-0 start-0 w-100 h-100 bg-primary opacity-10"
+                    ></div>
+                    <div
+                      class="card-body py-3 px-4 d-flex flex-column justify-content-center position-relative z-1"
+                    >
+                      <div
+                        class="text-primary small fw-semibold mb-1 d-flex align-items-center gap-2"
+                      >
+                        <i class="ph ph-heartbeat"></i> CX Health Score
+                      </div>
+                      <div class="fs-4 fw-bold text-primary">
+                        <span id="metric-health">0</span>%
+                        <span class="small fw-normal text-muted ms-1 text-body"
+                          >Stable</span
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div
+                    class="card shadow-sm border h-100"
+                    style="cursor: pointer; transition: transform 0.2s"
+                    onmouseover="this.style.transform = 'translateY(-2px)'"
+                    onmouseout="this.style.transform = 'translateY(0)'"
+                    data-bs-toggle="modal"
+                    data-bs-target="#criticalAlertsModal"
+                  >
+                    <div
+                      class="card-body py-3 px-4 d-flex flex-column justify-content-center"
+                    >
+                      <div
+                        class="text-danger small fw-medium mb-1 d-flex align-items-center justify-content-between"
+                      >
+                        <span class="d-flex align-items-center gap-2"
+                          ><i class="ph ph-warning-octagon"></i> Critical
+                          Alerts</span
+                        >
+                        <i
+                          class="ph ph-arrow-up-right text-muted opacity-50"
+                        ></i>
+                      </div>
+                      <div class="fs-4 fw-bold text-danger">
+                        <span id="metric-critical">0</span>
+                        <span class="small fw-normal text-muted ms-1 text-body"
+                          >Needs attention</span
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Row 2: Charts -->
+              <div class="row g-4">
+                <!-- Trend Tracking -->
+                <div class="col-md-8">
+                  <div class="card shadow-sm border h-100">
+                    <div
+                      class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pt-3 pb-0"
+                    >
+                      <h3 class="h6 fw-semibold mb-0">
+                        Sentiment Trend (30 Days)
+                      </h3>
+                      <select
+                        class="form-select form-select-sm w-auto border-0 bg-body-tertiary"
+                      >
+                        <option>Past 30 Days</option>
+                        <option>Past 7 Days</option>
+                      </select>
+                    </div>
+                    <div class="card-body">
+                      <canvas
+                        id="trendChart"
+                        style="max-height: 220px"
+                      ></canvas>
+                    </div>
+                  </div>
                 </div>
 
-                <!-- Logout Button -->
-                <a href="/" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1 rounded-pill px-3">
-                    <i class="ph ph-sign-out"></i> Logout
-                </a>
-            </div>
-        </header>
+                <!-- Customer Mood -->
+                <div class="col-md-4">
+                  <div class="card shadow-sm border h-100">
+                    <div
+                      class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pt-3 pb-0"
+                    >
+                      <h3 class="h6 fw-semibold mb-0">Mood Distribution</h3>
+                      <i class="ph ph-dots-three text-muted"></i>
+                    </div>
+                    <div
+                      class="card-body d-flex flex-column align-items-center justify-content-center pb-4 pt-2"
+                    >
+                      <div
+                        class="donut-container mb-3"
+                        style="width: 140px; height: 140px; position: relative"
+                      >
+                        <svg
+                          viewBox="0 0 36 36"
+                          class="circular-chart w-100 h-100"
+                        >
+                          <path
+                            class="circle angry"
+                            stroke-dasharray="5, 100"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                          <path
+                            class="circle frustrated"
+                            stroke-dasharray="15, 100"
+                            stroke-dashoffset="-5"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                          <path
+                            class="circle neutral"
+                            stroke-dasharray="20, 100"
+                            stroke-dashoffset="-20"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                          <path
+                            class="circle satisfied"
+                            stroke-dasharray="35, 100"
+                            stroke-dashoffset="-40"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                          <path
+                            class="circle delighted"
+                            stroke-dasharray="25, 100"
+                            stroke-dashoffset="-75"
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          />
+                          <text
+                            x="18"
+                            y="20.35"
+                            class="chart-center-text small fw-semibold"
+                          >
+                            Mood
+                          </text>
+                        </svg>
+                      </div>
+                      <div
+                        class="d-flex flex-wrap justify-content-center gap-2"
+                      >
+                        <div
+                          class="d-flex align-items-center gap-1 small text-muted"
+                        >
+                          <span
+                            class="dot bg-success rounded-circle"
+                            style="width: 8px; height: 8px"
+                          ></span>
+                          Delighted
+                        </div>
+                        <div
+                          class="d-flex align-items-center gap-1 small text-muted"
+                        >
+                          <span
+                            class="dot bg-primary rounded-circle"
+                            style="width: 8px; height: 8px"
+                          ></span>
+                          Satisfied
+                        </div>
+                        <div
+                          class="d-flex align-items-center gap-1 small text-muted"
+                        >
+                          <span
+                            class="dot bg-secondary rounded-circle"
+                            style="width: 8px; height: 8px"
+                          ></span>
+                          Neutral
+                        </div>
+                        <div
+                          class="d-flex align-items-center gap-1 small text-muted"
+                        >
+                          <span
+                            class="dot bg-warning rounded-circle"
+                            style="width: 8px; height: 8px"
+                          ></span>
+                          Frustrated
+                        </div>
+                        <div
+                          class="d-flex align-items-center gap-1 small text-muted"
+                        >
+                          <span
+                            class="dot bg-danger rounded-circle"
+                            style="width: 8px; height: 8px"
+                          ></span>
+                          Angry
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-        <!-- Main Content Layout -->
-        <main class="container-fluid py-4 flex-grow-1" style="max-width: 1600px;">
-            <div class="row g-4">
-                
-                <!-- Left Panel (Control Center) -->
-                <aside class="col-lg-3 d-flex flex-column gap-4">
-                    
+              <!-- Row 3: Issues & AI Insight -->
+              <div class="row g-4">
+                <!-- Advanced Issue Detection -->
+                <div class="col-md-6">
+                  <div
+                    class="card shadow-sm border h-100"
+                    id="issue-matrix-card"
+                  >
+                    <div
+                      class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pt-3 pb-0"
+                    >
+                      <h3 class="h6 fw-semibold mb-0">
+                        Issue Detection Matrix
+                      </h3>
+                      <button
+                        id="expand-matrix-btn"
+                        class="btn btn-sm btn-link text-muted p-0"
+                      >
+                        <i class="ph ph-arrows-out-simple"></i>
+                      </button>
+                    </div>
+                    <div class="card-body d-flex flex-column gap-3">
+                      <div class="card-body d-flex flex-column gap-3">
+                        <!-- Delivery -->
+                        <div
+                          class="p-3 border rounded bg-body-tertiary position-relative overflow-hidden"
+                          style="cursor: pointer"
+                          onclick="toggleIssue('delivery-details')"
+                        >
+                          <div
+                            class="position-absolute top-0 start-0 h-100 bg-danger"
+                            style="width: 4px"
+                          ></div>
 
-                    
+                          <div
+                            class="d-flex justify-content-between align-items-start mb-2"
+                          >
+                            <div class="fw-medium">Delivery Delays</div>
 
+                            <span class="badge bg-danger-subtle text-danger">
+                              High Impact (<span id="delivery-percent">0%</span
+                              >)
+                            </span>
+                          </div>
 
-                    <button class="btn btn-primary w-100 py-3 d-flex align-items-center justify-content-center gap-2 shadow-sm" id="run-analysis-btn">
-                        <span class="btn-text fw-medium">Run Intelligence Analysis</span>
-                        <i class="ph ph-magic-wand"></i>
+                          <div class="small text-muted mb-2">
+                            Frequent complaints related to shipping delays and
+                            delivery timelines.
+                          </div>
+
+                          <div class="d-flex gap-1 mb-2">
+                            <span
+                              class="badge bg-body border text-muted fw-normal"
+                              style="font-size: 10px"
+                            >
+                              Logistics
+                            </span>
+                            <span
+                              class="badge bg-body border text-muted fw-normal"
+                              style="font-size: 10px"
+                            >
+                              Delivery
+                            </span>
+                          </div>
+
+                          <div
+                            id="delivery-details"
+                            class="small text-body mt-2"
+                            style="display: none"
+                          ></div>
+                        </div>
+
+                        <!-- Support -->
+                        <div
+                          class="p-3 border rounded bg-body-tertiary position-relative overflow-hidden"
+                          style="cursor: pointer"
+                          onclick="toggleIssue('support-details')"
+                        >
+                          <div
+                            class="position-absolute top-0 start-0 h-100 bg-warning"
+                            style="width: 4px"
+                          ></div>
+
+                          <div
+                            class="d-flex justify-content-between align-items-start mb-2"
+                          >
+                            <div class="fw-medium">Support Wait Times</div>
+
+                            <span class="badge bg-warning-subtle text-warning">
+                              Med Impact (<span id="support-percent">0%</span>)
+                            </span>
+                          </div>
+
+                          <div class="small text-muted mb-2">
+                            Customer complaints around support response time and
+                            service quality.
+                          </div>
+
+                          <div class="d-flex gap-1 mb-2">
+                            <span
+                              class="badge bg-body border text-muted fw-normal"
+                              style="font-size: 10px"
+                            >
+                              Support
+                            </span>
+                            <span
+                              class="badge bg-body border text-muted fw-normal"
+                              style="font-size: 10px"
+                            >
+                              Response Time
+                            </span>
+                          </div>
+
+                          <div
+                            id="support-details"
+                            class="small text-body mt-2"
+                            style="display: none"
+                          ></div>
+                        </div>
+
+                        <!-- Payment -->
+                        <div
+                          class="p-3 border rounded bg-body-tertiary position-relative overflow-hidden"
+                          style="cursor: pointer"
+                          onclick="toggleIssue('payment-details')"
+                        >
+                          <div
+                            class="position-absolute top-0 start-0 h-100 bg-primary"
+                            style="width: 4px"
+                          ></div>
+
+                          <div
+                            class="d-flex justify-content-between align-items-start mb-2"
+                          >
+                            <div class="fw-medium">Payment Issues</div>
+
+                            <span class="badge bg-primary-subtle text-primary">
+                              Monitored (<span id="payment-percent">0%</span>)
+                            </span>
+                          </div>
+
+                          <div class="small text-muted mb-2">
+                            Billing concerns, failed transactions and
+                            refund-related feedback.
+                          </div>
+
+                          <div class="d-flex gap-1 mb-2">
+                            <span
+                              class="badge bg-body border text-muted fw-normal"
+                              style="font-size: 10px"
+                            >
+                              Billing
+                            </span>
+                            <span
+                              class="badge bg-body border text-muted fw-normal"
+                              style="font-size: 10px"
+                            >
+                              Refunds
+                            </span>
+                          </div>
+
+                          <div
+                            id="payment-details"
+                            class="small text-body mt-2"
+                            style="display: none"
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- AI Insight & Smarter Sentiment -->
+                <div class="col-md-6 d-flex flex-column gap-4">
+                  <!-- Smarter Sentiment -->
+                  <div class="card shadow-sm border">
+                    <div
+                      class="card-body d-flex align-items-center justify-content-between p-3"
+                    >
+                      <div>
+                        <div class="small text-muted fw-medium mb-1">
+                          Sentiment Confidence Score
+                        </div>
+                        <div
+                          id="confidence-score"
+                          class="fs-5 fw-bold text-body"
+                        >
+                          0%
+                        </div>
+                      </div>
+                      <div
+                        class="d-flex flex-column gap-1"
+                        style="width: 150px"
+                      >
+                        <div
+                          class="d-flex justify-content-between small"
+                          style="font-size: 10px"
+                        >
+                          <span class="text-muted">Accuracy</span>
+                          <span class="fw-bold">High</span>
+                        </div>
+                        <div class="progress" style="height: 4px">
+                          <div
+                            class="progress-bar bg-primary"
+                            role="progressbar"
+                            style="width: 94%"
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- AI Insight Box -->
+                  <div
+                    class="ai-insight-box rounded p-4 position-relative border flex-grow-1 shadow-sm"
+                  >
+                    <div class="d-flex align-items-start gap-3">
+                      <div
+                        class="bg-primary text-white rounded d-flex align-items-center justify-content-center shadow-sm"
+                        style="width: 36px; height: 36px; flex-shrink: 0"
+                      >
+                        <i class="ph-fill ph-sparkle"></i>
+                      </div>
+                      <div>
+                        <h4 class="h6 fw-semibold text-primary mb-2">
+                          Intelligence Brief
+                        </h4>
+                        <p class="mb-0 small lh-lg ai-content-text">
+                          Our NLP engine detected a
+                          <strong>15% spike in frustration</strong> regarding
+                          shipping times over the last 48 hours. The sentiment
+                          confidence is very high. It is recommended to update
+                          the estimated delivery times on the checkout page to
+                          manage expectations.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      class="btn btn-sm btn-link text-muted position-absolute top-0 end-0 m-2 icon-btn"
+                    >
+                      <i class="ph ph-x"></i>
                     </button>
-                    
-                </aside>
+                  </div>
+                </div>
+              </div>
 
-                <!-- Right Panel (Insights Dashboard) -->
-                <section class="col-lg-9 position-relative">
-                    
-                    <!-- Overlay for Loading State -->
-                    <div class="loading-overlay rounded d-flex flex-column align-items-center justify-content-center gap-3" id="loading-overlay">
-                        <div class="spinner-border text-primary" role="status" style="width: 2.5rem; height: 2.5rem;">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p id="loading-text" class="fw-medium mb-0">Analyzing customer feedback...</p>
+              <!-- Row 4: Log -->
+              <div class="card shadow-sm border">
+                <div
+                  class="card-header bg-transparent border-bottom p-3 d-flex flex-wrap justify-content-between align-items-center gap-3"
+                >
+                  <h3 class="h6 fw-semibold mb-0">Feedback Intelligence Log</h3>
+                  <div class="d-flex flex-wrap align-items-center gap-2">
+                    <div class="position-relative">
+                      <i
+                        class="ph ph-magnifying-glass position-absolute text-muted"
+                        style="
+                          left: 12px;
+                          top: 50%;
+                          transform: translateY(-50%);
+                        "
+                      ></i>
+                      <input
+                        type="text"
+                        id="search-reviews"
+                        class="form-control form-control-sm ps-4 bg-body-tertiary border-0"
+                        placeholder="Search keywords..."
+                        style="width: 200px"
+                      />
                     </div>
-
-                    <div class="dashboard-content d-flex flex-column gap-4" id="dashboard-content">
-                        
-                        <!-- Row 1: Analytics Cards -->
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <div class="card shadow-sm border h-100">
-                                    <div class="card-body py-3 px-4 d-flex flex-column justify-content-center">
-                                        <div class="text-muted small fw-medium mb-1 d-flex align-items-center gap-2"><i class="ph ph-files"></i> Total Analyzed</div>
-                                        <div class="fs-4 fw-bold text-body" id="metric-total">0</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card shadow-sm border h-100">
-                                    <div class="card-body py-3 px-4 d-flex flex-column justify-content-center">
-                                        <div class="text-muted small fw-medium mb-1 d-flex align-items-center gap-2"><i class="ph ph-star"></i> Average Rating</div>
-                                        <div class="fs-4 fw-bold text-body d-flex align-items-center gap-2"><span id="metric-rating">0.0</span> <span class="badge bg-success-subtle text-success fs-6 px-2 py-1 d-none" id="metric-rating-trend"><i class="ph-fill ph-caret-up"></i></span></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card shadow-sm border h-100 position-relative overflow-hidden">
-                                    <div class="position-absolute top-0 start-0 w-100 h-100 bg-primary opacity-10"></div>
-                                    <div class="card-body py-3 px-4 d-flex flex-column justify-content-center position-relative z-1">
-                                        <div class="text-primary small fw-semibold mb-1 d-flex align-items-center gap-2"><i class="ph ph-heartbeat"></i> CX Health Score</div>
-                                        <div class="fs-4 fw-bold text-primary"><span id="metric-health">0</span>% <span class="small fw-normal text-muted ms-1 text-body">Stable</span></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="card shadow-sm border h-100" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'" data-bs-toggle="modal" data-bs-target="#criticalAlertsModal">
-                                    <div class="card-body py-3 px-4 d-flex flex-column justify-content-center">
-                                        <div class="text-danger small fw-medium mb-1 d-flex align-items-center justify-content-between">
-                                            <span class="d-flex align-items-center gap-2"><i class="ph ph-warning-octagon"></i> Critical Alerts</span>
-                                            <i class="ph ph-arrow-up-right text-muted opacity-50"></i>
-                                        </div>
-                                        <div class="fs-4 fw-bold text-danger"><span id="metric-critical">0</span> <span class="small fw-normal text-muted ms-1 text-body">Needs attention</span></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Row 2: Charts -->
-                        <div class="row g-4">
-                            <!-- Trend Tracking -->
-                            <div class="col-md-8">
-                                <div class="card shadow-sm border h-100">
-                                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pt-3 pb-0">
-                                        <h3 class="h6 fw-semibold mb-0">Sentiment Trend (30 Days)</h3>
-                                        <select class="form-select form-select-sm w-auto border-0 bg-body-tertiary">
-                                            <option>Past 30 Days</option>
-                                            <option>Past 7 Days</option>
-                                        </select>
-                                    </div>
-                                    <div class="card-body">
-                                        <canvas id="trendChart" style="max-height: 220px;"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Customer Mood -->
-                            <div class="col-md-4">
-                                <div class="card shadow-sm border h-100">
-                                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pt-3 pb-0">
-                                        <h3 class="h6 fw-semibold mb-0">Mood Distribution</h3>
-                                        <i class="ph ph-dots-three text-muted"></i>
-                                    </div>
-                                    <div class="card-body d-flex flex-column align-items-center justify-content-center pb-4 pt-2">
-                                        <div class="donut-container mb-3" style="width: 140px; height: 140px; position: relative;">
-                                            <svg viewBox="0 0 36 36" class="circular-chart w-100 h-100">
-                                                <path class="circle angry" stroke-dasharray="5, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                                                <path class="circle frustrated" stroke-dasharray="15, 100" stroke-dashoffset="-5" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                                                <path class="circle neutral" stroke-dasharray="20, 100" stroke-dashoffset="-20" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                                                <path class="circle satisfied" stroke-dasharray="35, 100" stroke-dashoffset="-40" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                                                <path class="circle delighted" stroke-dasharray="25, 100" stroke-dashoffset="-75" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                                                <text x="18" y="20.35" class="chart-center-text small fw-semibold">Mood</text>
-                                            </svg>
-                                        </div>
-                                        <div class="d-flex flex-wrap justify-content-center gap-2">
-                                            <div class="d-flex align-items-center gap-1 small text-muted"><span class="dot bg-success rounded-circle" style="width:8px;height:8px;"></span> Delighted</div>
-                                            <div class="d-flex align-items-center gap-1 small text-muted"><span class="dot bg-primary rounded-circle" style="width:8px;height:8px;"></span> Satisfied</div>
-                                            <div class="d-flex align-items-center gap-1 small text-muted"><span class="dot bg-secondary rounded-circle" style="width:8px;height:8px;"></span> Neutral</div>
-                                            <div class="d-flex align-items-center gap-1 small text-muted"><span class="dot bg-warning rounded-circle" style="width:8px;height:8px;"></span> Frustrated</div>
-                                            <div class="d-flex align-items-center gap-1 small text-muted"><span class="dot bg-danger rounded-circle" style="width:8px;height:8px;"></span> Angry</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Row 3: Issues & AI Insight -->
-                        <div class="row g-4">
-                            <!-- Advanced Issue Detection -->
-                            <div class="col-md-6">
-                                <div class="card shadow-sm border h-100" id="issue-matrix-card">
-                                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pt-3 pb-0">
-                                        <h3 class="h6 fw-semibold mb-0">Issue Detection Matrix</h3>
-                                        <button id="expand-matrix-btn" class="btn btn-sm btn-link text-muted p-0"><i class="ph ph-arrows-out-simple"></i></button>
-                                    </div>
-                                    <div class="card-body d-flex flex-column gap-3">
-                                        <div class="card-body d-flex flex-column gap-3">
-
-    <!-- Delivery -->
-    <div
-        class="p-3 border rounded bg-body-tertiary position-relative overflow-hidden"
-        style="cursor:pointer;"
-        onclick="toggleIssue('delivery-details')"
-    >
-        <div
-            class="position-absolute top-0 start-0 h-100 bg-danger"
-            style="width:4px;"
-        ></div>
-
-        <div class="d-flex justify-content-between align-items-start mb-2">
-            <div class="fw-medium">Delivery Delays</div>
-
-            <span class="badge bg-danger-subtle text-danger">
-                High Impact (<span id="delivery-percent">0%</span>)
-            </span>
-        </div>
-
-        <div class="small text-muted mb-2">
-            Frequent complaints related to shipping delays and delivery timelines.
-        </div>
-
-        <div class="d-flex gap-1 mb-2">
-            <span class="badge bg-body border text-muted fw-normal" style="font-size:10px;">
-                Logistics
-            </span>
-            <span class="badge bg-body border text-muted fw-normal" style="font-size:10px;">
-                Delivery
-            </span>
-        </div>
-
-        <div
-            id="delivery-details"
-            class="small text-body mt-2"
-            style="display:none;"
-        ></div>
-    </div>
-
-
-    <!-- Support -->
-    <div
-        class="p-3 border rounded bg-body-tertiary position-relative overflow-hidden"
-        style="cursor:pointer;"
-        onclick="toggleIssue('support-details')"
-    >
-        <div
-            class="position-absolute top-0 start-0 h-100 bg-warning"
-            style="width:4px;"
-        ></div>
-
-        <div class="d-flex justify-content-between align-items-start mb-2">
-            <div class="fw-medium">Support Wait Times</div>
-
-            <span class="badge bg-warning-subtle text-warning">
-                Med Impact (<span id="support-percent">0%</span>)
-            </span>
-        </div>
-
-        <div class="small text-muted mb-2">
-            Customer complaints around support response time and service quality.
-        </div>
-
-        <div class="d-flex gap-1 mb-2">
-            <span class="badge bg-body border text-muted fw-normal" style="font-size:10px;">
-                Support
-            </span>
-            <span class="badge bg-body border text-muted fw-normal" style="font-size:10px;">
-                Response Time
-            </span>
-        </div>
-
-        <div
-            id="support-details"
-            class="small text-body mt-2"
-            style="display:none;"
-        ></div>
-    </div>
-
-
-    <!-- Payment -->
-    <div
-        class="p-3 border rounded bg-body-tertiary position-relative overflow-hidden"
-        style="cursor:pointer;"
-        onclick="toggleIssue('payment-details')"
-    >
-        <div
-            class="position-absolute top-0 start-0 h-100 bg-primary"
-            style="width:4px;"
-        ></div>
-
-        <div class="d-flex justify-content-between align-items-start mb-2">
-            <div class="fw-medium">Payment Issues</div>
-
-            <span class="badge bg-primary-subtle text-primary">
-                Monitored (<span id="payment-percent">0%</span>)
-            </span>
-        </div>
-
-        <div class="small text-muted mb-2">
-            Billing concerns, failed transactions and refund-related feedback.
-        </div>
-
-        <div class="d-flex gap-1 mb-2">
-            <span class="badge bg-body border text-muted fw-normal" style="font-size:10px;">
-                Billing
-            </span>
-            <span class="badge bg-body border text-muted fw-normal" style="font-size:10px;">
-                Refunds
-            </span>
-        </div>
-
-        <div
-            id="payment-details"
-            class="small text-body mt-2"
-            style="display:none;"
-        ></div>
-    </div>
-
-</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- AI Insight & Smarter Sentiment -->
-                            <div class="col-md-6 d-flex flex-column gap-4">
-                                <!-- Smarter Sentiment -->
-                                <div class="card shadow-sm border">
-                                    <div class="card-body d-flex align-items-center justify-content-between p-3">
-                                        <div>
-                                            <div class="small text-muted fw-medium mb-1">Sentiment Confidence Score</div>
-                                            <div id="confidence-score" class="fs-5 fw-bold text-body">0%</div>
-                                        </div>
-                                        <div class="d-flex flex-column gap-1" style="width: 150px;">
-                                            <div class="d-flex justify-content-between small" style="font-size: 10px;"><span class="text-muted">Accuracy</span> <span class="fw-bold">High</span></div>
-                                            <div class="progress" style="height: 4px;">
-                                                <div class="progress-bar bg-primary" role="progressbar" style="width: 94%"></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- AI Insight Box -->
-                                <div class="ai-insight-box rounded p-4 position-relative border flex-grow-1 shadow-sm">
-                                    <div class="d-flex align-items-start gap-3">
-                                        <div class="bg-primary text-white rounded d-flex align-items-center justify-content-center shadow-sm" style="width: 36px; height: 36px; flex-shrink: 0;">
-                                            <i class="ph-fill ph-sparkle"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="h6 fw-semibold text-primary mb-2">Intelligence Brief</h4>
-                                            <p class="mb-0 small lh-lg ai-content-text">Our NLP engine detected a <strong>15% spike in frustration</strong> regarding shipping times over the last 48 hours. The sentiment confidence is very high. It is recommended to update the estimated delivery times on the checkout page to manage expectations.</p>
-                                        </div>
-                                    </div>
-                                    <button class="btn btn-sm btn-link text-muted position-absolute top-0 end-0 m-2 icon-btn">
-                                        <i class="ph ph-x"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Row 4: Log -->
-                        <div class="card shadow-sm border">
-                            <div class="card-header bg-transparent border-bottom p-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
-                                <h3 class="h6 fw-semibold mb-0">Feedback Intelligence Log</h3>
-                                <div class="d-flex flex-wrap align-items-center gap-2">
-                                    <div class="position-relative">
-                                        <i class="ph ph-magnifying-glass position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%);"></i>
-                                        <input type="text" id="search-reviews" class="form-control form-control-sm ps-4 bg-body-tertiary border-0" placeholder="Search keywords..." style="width: 200px;">
-                                    </div>
-                                    <select id="filter-sentiment" class="form-select form-select-sm border-0 bg-body-tertiary" style="width: auto;">
-                                        <option value="all">All Sentiments</option>
-                                        <option value="positive">Positive</option>
-                                        <option value="neutral">Neutral</option>
-                                        <option value="critical">Critical</option>
-                                    </select>
-                                    <button class="btn btn-sm btn-light border d-flex align-items-center gap-2 bg-body" id="export-csv-btn">
-                                        <i class="ph ph-export"></i> Export
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle mb-0 custom-table">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="ps-4 fw-medium text-muted small py-3">Review Snippet</th>
-                                            <th class="fw-medium text-muted small py-3">Rating</th>
-                                            <th class="fw-medium text-muted small py-3">Key Emotion</th>
-                                            <th class="fw-medium text-muted small py-3">Confidence</th>
-                                            <th class="fw-medium text-muted small py-3 text-end pe-4">Sentiment</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="border-top-0" id="feedback-table-body">
-                                        <!-- Dynamic content populated by JS -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                    </div>
-                </section>
+                    <select
+                      id="filter-sentiment"
+                      class="form-select form-select-sm border-0 bg-body-tertiary"
+                      style="width: auto"
+                    >
+                      <option value="all">All Sentiments</option>
+                      <option value="positive">Positive</option>
+                      <option value="neutral">Neutral</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                    <button
+                      class="btn btn-sm btn-light border d-flex align-items-center gap-2 bg-body"
+                      id="export-csv-btn"
+                    >
+                      <i class="ph ph-export"></i> Export
+                    </button>
+                  </div>
+                </div>
+                <div class="table-responsive">
+                  <table
+                    class="table table-hover align-middle mb-0 custom-table"
+                  >
+                    <thead class="table-light">
+                      <tr>
+                        <th class="ps-4 fw-medium text-muted small py-3">
+                          Review Snippet
+                        </th>
+                        <th class="fw-medium text-muted small py-3">Rating</th>
+                        <th class="fw-medium text-muted small py-3">
+                          Key Emotion
+                        </th>
+                        <th class="fw-medium text-muted small py-3">
+                          Confidence
+                        </th>
+                        <th
+                          class="fw-medium text-muted small py-3 text-end pe-4"
+                        >
+                          Sentiment
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody class="border-top-0" id="feedback-table-body">
+                      <!-- Dynamic content populated by JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-        </main>
+          </section>
+        </div>
+      </main>
     </div>
-    
+
     <!-- Matrix Modal Backdrop -->
     <div id="matrix-backdrop" class="modal-backdrop-custom"></div>
 
     <!-- Critical Alerts Modal -->
-    <div class="modal fade" id="criticalAlertsModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header border-bottom bg-danger text-white">
-                    <h5 class="modal-title d-flex align-items-center gap-2"><i class="ph ph-warning-octagon fs-4"></i> Critical Alerts Review</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body bg-body-tertiary p-4">
-                    <div id="critical-alerts-container" class="d-flex flex-column gap-3">
-                        <div class="text-center text-muted py-5">No critical alerts to review! You're doing great.</div>
-                    </div>
-                </div>
-                <div class="modal-footer border-top bg-body">
-                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-danger">Acknowledge All</button>
-                </div>
+    <div
+      class="modal fade"
+      id="criticalAlertsModal"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div
+        class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"
+      >
+        <div class="modal-content border-0 shadow-lg">
+          <div class="modal-header border-bottom bg-danger text-white">
+            <h5 class="modal-title d-flex align-items-center gap-2">
+              <i class="ph ph-warning-octagon fs-4"></i> Critical Alerts Review
+            </h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body bg-body-tertiary p-4">
+            <div
+              id="critical-alerts-container"
+              class="d-flex flex-column gap-3"
+            >
+              <div class="text-center text-muted py-5">
+                No critical alerts to review! You're doing great.
+              </div>
             </div>
+          </div>
+          <div class="modal-footer border-top bg-body">
+            <button
+              type="button"
+              class="btn btn-light border"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
+            <button type="button" class="btn btn-danger">
+              Acknowledge All
+            </button>
+          </div>
         </div>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/dashboard.js"></script>
-</body>
+  </body>
 </html>
