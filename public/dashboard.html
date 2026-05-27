@@ -18,37 +18,161 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <script>
-async function loadFeedback() {
-    try {
-        const response = await fetch('/api/feedback');
-        const feedbacks = await response.json();
+let trendChart;
 
-        console.log('Feedback:', feedbacks);
+document.addEventListener("DOMContentLoaded", () => {
+    initTrendChart();
+    loadDashboard();
+});
 
-        document.getElementById('metric-total').textContent = feedbacks.length;
+function initTrendChart() {
+    const ctx = document.getElementById("trendChart");
 
-        const container = document.getElementById('feedback-list');
+    if (!ctx) return;
 
-        if (container) {
-            container.innerHTML = '';
-
-            feedbacks.forEach(item => {
-                container.innerHTML += `
-                    <div class="card mb-3 p-3">
-                        <h5>${item.name}</h5>
-                        <p>${item.snippet}</p>
-                        <small>${item.sentiment}</small>
-                    </div>
-                `;
-            });
+    trendChart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "Feedback Volume",
+                data: [],
+                tension: 0.35,
+                borderWidth: 2,
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
         }
+    });
+}
+
+async function loadDashboard() {
+    try {
+        const res = await fetch('/api/feedback');
+        const feedbacks = await res.json();
+
+        updateMetrics(feedbacks);
+        updateTrendChart(feedbacks);
+        updateIssueMatrix(feedbacks);
+        updateConfidence(feedbacks);
+        updateAILog(feedbacks);
 
     } catch (error) {
-        console.error('Failed loading feedback:', error);
+        console.error(error);
     }
 }
 
-window.onload = loadFeedback;
+function updateMetrics(feedbacks) {
+    const total = feedbacks.length;
+    let ratingTotal = 0;
+    let positive = 0;
+    let critical = 0;
+
+    feedbacks.forEach(item => {
+        ratingTotal += Number(item.rating || 0);
+
+        const sentiment = (item.sentiment || '').toLowerCase();
+
+        if (sentiment === 'positive') positive++;
+        if (
+            sentiment === 'negative' ||
+            sentiment === 'critical'
+        ) critical++;
+    });
+
+    const avgRating = total ? (ratingTotal / total).toFixed(1) : "0.0";
+    const healthScore = total ? Math.round((positive / total) * 100) : 0;
+
+    document.getElementById("metric-total").textContent = total;
+    document.getElementById("metric-rating").textContent = avgRating;
+    document.getElementById("metric-health").textContent = healthScore;
+    document.getElementById("metric-critical").textContent = critical;
+}
+
+function updateTrendChart(feedbacks) {
+    const grouped = {};
+
+    feedbacks.forEach(item => {
+        const date = new Date(item.createdAt).toLocaleDateString();
+
+        grouped[date] = (grouped[date] || 0) + 1;
+    });
+
+    trendChart.data.labels = Object.keys(grouped);
+    trendChart.data.datasets[0].data = Object.values(grouped);
+
+    trendChart.update();
+}
+
+function updateIssueMatrix(feedbacks) {
+    let delivery = 0;
+    let support = 0;
+
+    feedbacks.forEach(item => {
+        const text = (
+            item.review ||
+            item.snippet ||
+            ''
+        ).toLowerCase();
+
+        if (
+            text.includes("delivery") ||
+            text.includes("late")
+        ) delivery++;
+
+        if (
+            text.includes("support") ||
+            text.includes("agent")
+        ) support++;
+    });
+
+    document.getElementById("delivery-percent").textContent =
+        delivery + "%";
+
+    document.getElementById("support-percent").textContent =
+        support + "%";
+}
+
+function updateConfidence(feedbacks) {
+    if (!feedbacks.length) return;
+
+    let totalConfidence = 0;
+
+    feedbacks.forEach(item => {
+        totalConfidence += Number(item.confidence || 90);
+    });
+
+    const avg = Math.round(
+        totalConfidence / feedbacks.length
+    );
+
+    document.getElementById("confidence-score").textContent =
+        avg + "%";
+}
+
+function updateAILog(feedbacks) {
+    const table = document.getElementById("feedback-table-body");
+
+    table.innerHTML = "";
+
+    feedbacks
+        .slice()
+        .reverse()
+        .forEach(item => {
+            table.innerHTML += `
+                <tr>
+                    <td class="ps-4">${item.review || item.snippet || ''}</td>
+                    <td>${item.rating || '-'}</td>
+                    <td>${item.emotion || '-'}</td>
+                    <td>${item.confidence || 90}%</td>
+                    <td class="pe-4 text-end">${item.sentiment || '-'}</td>
+                </tr>
+            `;
+        });
+}
 </script>
 <body>
     <div id="app" class="min-vh-100 d-flex flex-column">
@@ -225,7 +349,7 @@ window.onload = loadFeedback;
                                             <div class="position-absolute top-0 start-0 h-100 bg-danger" style="width: 4px;"></div>
                                             <div class="d-flex justify-content-between align-items-start mb-2">
                                                 <div class="fw-medium">Delivery Delays</div>
-                                                <span class="badge bg-danger-subtle text-danger">High Impact (32%)</span>
+                                                <span class="badge bg-danger-subtle text-danger">High Impact (<span id="delivery-percent">0%</span>)</span>
                                             </div>
                                             <div class="small text-muted mb-2">"Packages arriving 3-4 days past promised date."</div>
                                             <div class="d-flex gap-1">
@@ -238,7 +362,7 @@ window.onload = loadFeedback;
                                             <div class="position-absolute top-0 start-0 h-100 bg-warning" style="width: 4px;"></div>
                                             <div class="d-flex justify-content-between align-items-start mb-2">
                                                 <div class="fw-medium">Support Wait Times</div>
-                                                <span class="badge bg-warning-subtle text-warning">Med Impact (18%)</span>
+                                                <span class="badge bg-warning-subtle text-warning">Med Impact (<span id="support-percent">0%</span>))</span>
                                             </div>
                                             <div class="small text-muted mb-2">"On hold for 45 minutes before speaking to agent."</div>
                                             <div class="d-flex gap-1">
@@ -257,7 +381,7 @@ window.onload = loadFeedback;
                                     <div class="card-body d-flex align-items-center justify-content-between p-3">
                                         <div>
                                             <div class="small text-muted fw-medium mb-1">Sentiment Confidence Score</div>
-                                            <div class="fs-5 fw-bold text-body">94.2%</div>
+                                            <div id="confidence-score" class="fs-5 fw-bold text-body">0%</div>
                                         </div>
                                         <div class="d-flex flex-column gap-1" style="width: 150px;">
                                             <div class="d-flex justify-content-between small" style="font-size: 10px;"><span class="text-muted">Accuracy</span> <span class="fw-bold">High</span></div>
