@@ -41,22 +41,27 @@ router.post('/login', (req, res) => {
 });
 
 router.post('/analyze',
-  [
-    body('text').isString().withMessage('Review text must be a string')
-  ],
+    [
+      body('text').isString().withMessage('Review text must be a string'),
+      body('name').optional().isString().withMessage('Name must be a string'),
+      body('email').optional().isString().withMessage('Email must be a string'),
+      body('phone').optional().isString().withMessage('Phone must be a string')
+    ],
   (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    const { text, name, email, phone } = req.body;
+    const name = req.body.name && req.body.name.trim() ? req.body.name.trim() : 'Anonymous';
+    const email = req.body.email && req.body.email.trim() ? req.body.email.trim() : 'anonymous@example.com';
+    const phone = req.body.phone ? req.body.phone.trim() : '';
+    // Remove previous destructuring of name,email,phone
+    // const { text, name, email, phone } = req.body;
     // Basic checks (retain original logic for missing text/name/email)
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ error: 'Review text is required' });
     }
-    if (!name || !email) {
-      return res.status(400).json({ error: 'Name and email are required' });
-    }
+
     // ---- Simple mock analysis ----
     const textLower = text.toLowerCase();
     const positiveKeywords = ['amazing', 'great', 'love', 'excellent', 'good', 'best', 'smooth', 'exceeded'];

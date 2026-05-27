@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(res => {
             if (!res.ok) {
                 console.error('CSV upload failed', res.statusText);
+            } else {
+                // Refresh admin dashboard data
+                fetchFeedback();
             }
         })
         .catch(err => console.error('Error uploading CSV:', err));
@@ -433,8 +436,10 @@ document.addEventListener('DOMContentLoaded', () => {
     uploadZone.querySelector('.upload-sub').textContent = 'File ready for analysis';
     uploadZone.querySelector('.upload-icon').className = 'ph-fill ph-file-csv upload-icon text-primary';
     uploadZone.querySelector('.upload-icon').style.color = 'var(--bs-primary)';
-    // Trigger CSV upload to backend
-    uploadCsv(file);
+        // Trigger CSV upload to backend
+        uploadCsv(file);
+        // Refresh admin metrics after a short delay to ensure DB write completes
+        setTimeout(fetchFeedback, 800);
 }
 
     if (closeInsightBtn && insightBox) {
