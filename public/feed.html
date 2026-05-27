@@ -151,6 +151,21 @@
     }
     // Export to global scope if needed elsewhere
     window.uploadCsv = uploadCsv;
+
+    // Define frequently used DOM elements early
+    const uploadZone = document.getElementById('upload-zone');
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const submitBtn = document.getElementById('submit-btn');
+    const reviewInput = document.getElementById('review-input');
+    const successAlert = document.getElementById('success-alert');
+    const qualityText = document.getElementById('quality-text');
+    const qualityScore = document.getElementById('quality-score');
+    const mainFormCard = document.getElementById('main-form-card');
+    const terminalContainer = document.getElementById('terminal-container');
+    const terminalOutput = document.getElementById('terminal-output');
+    const recentList = document.getElementById('recent-list');
+    const recentEmpty = document.getElementById('recent-empty');
+
     // Existing code continues below
             // CSV Paste area - allows users to paste CSV text directly
             const csvPasteContainer = document.createElement('div');
@@ -181,18 +196,7 @@
                 });
             }
 
-            const submitBtn = document.getElementById('submit-btn');
-            const reviewInput = document.getElementById('review-input');
-            const successAlert = document.getElementById('success-alert');
-            const qualityText = document.getElementById('quality-text');
-            const qualityScore = document.getElementById('quality-score');
-            
-            const mainFormCard = document.getElementById('main-form-card');
-            const terminalContainer = document.getElementById('terminal-container');
-            const terminalOutput = document.getElementById('terminal-output');
-
-            const recentList = document.getElementById('recent-list');
-            const recentEmpty = document.getElementById('recent-empty');
+            // Variables already defined early; no re‑declaration needed
 
             // Quality Score Logic
             reviewInput.addEventListener('input', () => {
@@ -200,7 +204,8 @@
                 const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
                 
                 qualityScore.className = 'small fw-medium quality-score text-muted';
-                
+                // Reset previous rating classes
+                qualityScore.classList.remove('poor', 'good', 'excellent');
                 if (wordCount === 0) {
                     qualityText.textContent = 'Too short';
                 } else if (wordCount < 5) {
@@ -315,12 +320,14 @@
 
                             // ---- Also send the typed review as a CSV to the admin endpoint ----
                             // Build a simple CSV string with the same columns used by the upload UI
-                            const csvHeader = 'snippet,rating,emotion,confidence,sentiment,name,email,phone';
-                            const csvRow = `"${text.replace(/"/g, '""')}",${document.querySelector('.quality-score')?.textContent?.trim() || ''},${document.querySelector('.emotion-tag')?.textContent?.trim() || ''},${document.querySelector('.quality-score')?.textContent?.trim() || ''},${document.querySelector('.sentiment-badge')?.textContent?.trim() || ''},${document.getElementById('user-name').value.trim()},${document.getElementById('user-email').value.trim()},${document.getElementById('user-phone').value.trim()}`;
+                            const csvHeader = 'snippet,rating,name,email,phone';
+                            const rating = document.querySelector('.quality-score')?.textContent?.trim() || '';
+                            const csvRow = `"${text.replace(/"/g, '""')}",${rating},${document.getElementById('user-name').value.trim()},${document.getElementById('user-email').value.trim()},${document.getElementById('user-phone').value.trim()}`;
                             const csvContent = `${csvHeader}\n${csvRow}`;
                             // Create a File object and reuse the existing uploadCsv helper
                             const csvFile = new File([csvContent], 'review.csv', { type: 'text/csv' });
                             uploadCsv(csvFile);
+                            // Refresh recent list once after upload
                             fetchRecent();
                         }, 1000);
                     } else {
@@ -334,15 +341,16 @@
             });
 
             // Handle Drag & Drop styling & Parsing
-            const uploadZone = document.getElementById('upload-zone');
+
+            // Reuse existing uploadZone variable for drag & drop events
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                if(uploadZone) uploadZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
+                if (uploadZone) uploadZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
             });
             ['dragenter', 'dragover'].forEach(eventName => {
-                if(uploadZone) uploadZone.addEventListener(eventName, () => uploadZone.classList.add('drag-active'), false);
+                if (uploadZone) uploadZone.addEventListener(eventName, () => uploadZone.classList.add('drag-active'), false);
             });
             ['dragleave', 'drop'].forEach(eventName => {
-                if(uploadZone) uploadZone.addEventListener(eventName, () => uploadZone.classList.remove('drag-active'), false);
+                if (uploadZone) uploadZone.addEventListener(eventName, () => uploadZone.classList.remove('drag-active'), false);
             });
             if(uploadZone) {
                 uploadZone.addEventListener('drop', e => {
