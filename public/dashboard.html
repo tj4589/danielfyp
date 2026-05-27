@@ -17,6 +17,39 @@
     <!-- Chart.js for Trend Tracking -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+<script>
+async function loadFeedback() {
+    try {
+        const response = await fetch('/api/feedback');
+        const feedbacks = await response.json();
+
+        console.log('Feedback:', feedbacks);
+
+        document.getElementById('metric-total').textContent = feedbacks.length;
+
+        const container = document.getElementById('feedback-list');
+
+        if (container) {
+            container.innerHTML = '';
+
+            feedbacks.forEach(item => {
+                container.innerHTML += `
+                    <div class="card mb-3 p-3">
+                        <h5>${item.name}</h5>
+                        <p>${item.snippet}</p>
+                        <small>${item.sentiment}</small>
+                    </div>
+                `;
+            });
+        }
+
+    } catch (error) {
+        console.error('Failed loading feedback:', error);
+    }
+}
+
+window.onload = loadFeedback;
+</script>
 <body>
     <div id="app" class="min-vh-100 d-flex flex-column">
         
