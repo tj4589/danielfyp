@@ -72,16 +72,25 @@ function updateMetrics(feedbacks) {
     let critical = 0;
 
     feedbacks.forEach(item => {
-        ratingTotal += Number(item.rating || 0);
+    const sentiment = (
+        item.sentiment || ''
+    ).toLowerCase();
 
-        const sentiment = (item.sentiment || '').toLowerCase();
+    const text = (
+        item.review ||
+        ''
+    ).toLowerCase();
 
-        if (sentiment === 'positive') positive++;
-        if (
-            sentiment === 'negative' ||
-            sentiment === 'critical'
-        ) critical++;
-    });
+    if (
+        sentiment === "critical" ||
+        text.includes("refund") ||
+        text.includes("angry") ||
+        text.includes("terrible") ||
+        text.includes("worst")
+    ) {
+        critical++;
+    }
+});
 
     const avgRating = total ? (ratingTotal / total).toFixed(1) : "0.0";
     const healthScore = total ? Math.round((positive / total) * 100) : 0;
@@ -107,9 +116,61 @@ function updateTrendChart(feedbacks) {
     trendChart.update();
 }
 
+
+function updateConfidence(feedbacks) {
+    if (!feedbacks.length) return;
+
+    let score = 0;
+
+    feedbacks.forEach(item => {
+        const sentiment = (item.sentiment || '').toLowerCase();
+
+        if (sentiment === 'positive') score += 96;
+        else if (sentiment === 'neutral') score += 88;
+        else if (
+            sentiment === 'negative' ||
+            sentiment === 'critical'
+        ) score += 82;
+        else score += 90;
+    });
+
+    const average = Math.round(score / feedbacks.length);
+
+    document.getElementById(
+        "confidence-score"
+    ).textContent = average + "%";
+}
+
 function updateIssueMatrix(feedbacks) {
-    let delivery = 0;
-    let support = 0;
+    const issueKeywords = {
+        delivery: [
+            "delivery",
+            "delay",
+            "late",
+            "shipping",
+            "dispatch"
+        ],
+
+        support: [
+            "support",
+            "agent",
+            "response",
+            "customer care"
+        ],
+
+        payment: [
+            "payment",
+            "refund",
+            "billing",
+            "charged"
+        ]
+    };
+
+    const issueCount = {
+        delivery: 0,
+        support: 0,
+        payment: 0
+    };
 
     feedbacks.forEach(item => {
         const text = (
@@ -118,39 +179,62 @@ function updateIssueMatrix(feedbacks) {
             ''
         ).toLowerCase();
 
-        if (
-            text.includes("delivery") ||
-            text.includes("late")
-        ) delivery++;
-
-        if (
-            text.includes("support") ||
-            text.includes("agent")
-        ) support++;
+        for (const issue in issueKeywords) {
+            if (
+                issueKeywords[issue].some(word =>
+                    text.includes(word)
+                )
+            ) {
+                issueCount[issue]++;
+            }
+        }
     });
+
+    const total = feedbacks.length || 1;
 
     document.getElementById("delivery-percent").textContent =
-        delivery + "%";
+        Math.round((issueCount.delivery / total) * 100) + "%";
 
     document.getElementById("support-percent").textContent =
-        support + "%";
+        Math.round((issueCount.support / total) * 100) + "%";
+
+    document.getElementById("payment-percent").textContent =
+        Math.round((issueCount.payment / total) * 100) + "%";
+
+    populateIssueDetails(issueCount);
 }
 
-function updateConfidence(feedbacks) {
-    if (!feedbacks.length) return;
+function populateIssueDetails(issueCount) {
+    document.getElementById("delivery-details").innerHTML = `
+        <strong>${issueCount.delivery}</strong> mentions detected.
+        <br>
+        Most linked to delayed shipping and dispatch timing.
+    `;
 
-    let totalConfidence = 0;
+    document.getElementById("support-details").innerHTML = `
+        <strong>${issueCount.support}</strong> mentions detected.
+        <br>
+        Mainly related to response time and support interaction quality.
+    `;
 
-    feedbacks.forEach(item => {
-        totalConfidence += Number(item.confidence || 90);
-    });
+    document.getElementById("payment-details").innerHTML = `
+        <strong>${issueCount.payment}</strong> mentions detected.
+        <br>
+        Mostly billing complaints, refunds and payment confirmation delays.
+    `;
+}
 
-    const avg = Math.round(
-        totalConfidence / feedbacks.length
-    );
+function toggleIssue(id) {
+    const element = document.getElementById(id);
 
-    document.getElementById("confidence-score").textContent =
-        avg + "%";
+    if (
+        element.style.display === "none" ||
+        element.style.display === ""
+    ) {
+        element.style.display = "block";
+    } else {
+        element.style.display = "none";
+    }
 }
 
 function updateAILog(feedbacks) {
@@ -344,32 +428,128 @@ function updateAILog(feedbacks) {
                                         <button id="expand-matrix-btn" class="btn btn-sm btn-link text-muted p-0"><i class="ph ph-arrows-out-simple"></i></button>
                                     </div>
                                     <div class="card-body d-flex flex-column gap-3">
-                                        <!-- Issue 1 -->
-                                        <div class="p-3 border rounded bg-body-tertiary position-relative overflow-hidden">
-                                            <div class="position-absolute top-0 start-0 h-100 bg-danger" style="width: 4px;"></div>
-                                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                                <div class="fw-medium">Delivery Delays</div>
-                                                <span class="badge bg-danger-subtle text-danger">High Impact (<span id="delivery-percent">0%</span>)</span>
-                                            </div>
-                                            <div class="small text-muted mb-2">"Packages arriving 3-4 days past promised date."</div>
-                                            <div class="d-flex gap-1">
-                                                <span class="badge bg-body border text-muted fw-normal" style="font-size: 10px;">Logistics</span>
-                                                <span class="badge bg-body border text-muted fw-normal" style="font-size: 10px;">Expectations</span>
-                                            </div>
-                                        </div>
-                                        <!-- Issue 2 -->
-                                        <div class="p-3 border rounded bg-body-tertiary position-relative overflow-hidden">
-                                            <div class="position-absolute top-0 start-0 h-100 bg-warning" style="width: 4px;"></div>
-                                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                                <div class="fw-medium">Support Wait Times</div>
-                                                <span class="badge bg-warning-subtle text-warning">Med Impact (<span id="support-percent">0%</span>))</span>
-                                            </div>
-                                            <div class="small text-muted mb-2">"On hold for 45 minutes before speaking to agent."</div>
-                                            <div class="d-flex gap-1">
-                                                <span class="badge bg-body border text-muted fw-normal" style="font-size: 10px;">CS Team</span>
-                                                <span class="badge bg-body border text-muted fw-normal" style="font-size: 10px;">Response Time</span>
-                                            </div>
-                                        </div>
+                                        <div class="card-body d-flex flex-column gap-3">
+
+    <!-- Delivery -->
+    <div
+        class="p-3 border rounded bg-body-tertiary position-relative overflow-hidden"
+        style="cursor:pointer;"
+        onclick="toggleIssue('delivery-details')"
+    >
+        <div
+            class="position-absolute top-0 start-0 h-100 bg-danger"
+            style="width:4px;"
+        ></div>
+
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="fw-medium">Delivery Delays</div>
+
+            <span class="badge bg-danger-subtle text-danger">
+                High Impact (<span id="delivery-percent">0%</span>)
+            </span>
+        </div>
+
+        <div class="small text-muted mb-2">
+            Frequent complaints related to shipping delays and delivery timelines.
+        </div>
+
+        <div class="d-flex gap-1 mb-2">
+            <span class="badge bg-body border text-muted fw-normal" style="font-size:10px;">
+                Logistics
+            </span>
+            <span class="badge bg-body border text-muted fw-normal" style="font-size:10px;">
+                Delivery
+            </span>
+        </div>
+
+        <div
+            id="delivery-details"
+            class="small text-body mt-2"
+            style="display:none;"
+        ></div>
+    </div>
+
+
+    <!-- Support -->
+    <div
+        class="p-3 border rounded bg-body-tertiary position-relative overflow-hidden"
+        style="cursor:pointer;"
+        onclick="toggleIssue('support-details')"
+    >
+        <div
+            class="position-absolute top-0 start-0 h-100 bg-warning"
+            style="width:4px;"
+        ></div>
+
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="fw-medium">Support Wait Times</div>
+
+            <span class="badge bg-warning-subtle text-warning">
+                Med Impact (<span id="support-percent">0%</span>)
+            </span>
+        </div>
+
+        <div class="small text-muted mb-2">
+            Customer complaints around support response time and service quality.
+        </div>
+
+        <div class="d-flex gap-1 mb-2">
+            <span class="badge bg-body border text-muted fw-normal" style="font-size:10px;">
+                Support
+            </span>
+            <span class="badge bg-body border text-muted fw-normal" style="font-size:10px;">
+                Response Time
+            </span>
+        </div>
+
+        <div
+            id="support-details"
+            class="small text-body mt-2"
+            style="display:none;"
+        ></div>
+    </div>
+
+
+    <!-- Payment -->
+    <div
+        class="p-3 border rounded bg-body-tertiary position-relative overflow-hidden"
+        style="cursor:pointer;"
+        onclick="toggleIssue('payment-details')"
+    >
+        <div
+            class="position-absolute top-0 start-0 h-100 bg-primary"
+            style="width:4px;"
+        ></div>
+
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="fw-medium">Payment Issues</div>
+
+            <span class="badge bg-primary-subtle text-primary">
+                Monitored (<span id="payment-percent">0%</span>)
+            </span>
+        </div>
+
+        <div class="small text-muted mb-2">
+            Billing concerns, failed transactions and refund-related feedback.
+        </div>
+
+        <div class="d-flex gap-1 mb-2">
+            <span class="badge bg-body border text-muted fw-normal" style="font-size:10px;">
+                Billing
+            </span>
+            <span class="badge bg-body border text-muted fw-normal" style="font-size:10px;">
+                Refunds
+            </span>
+        </div>
+
+        <div
+            id="payment-details"
+            class="small text-body mt-2"
+            style="display:none;"
+        ></div>
+    </div>
+
+</div>
                                     </div>
                                 </div>
                             </div>
