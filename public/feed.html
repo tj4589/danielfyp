@@ -331,7 +331,9 @@
                             fetchRecent();
                         }, 1000);
                     } else {
-                        await addLog('Error: Submission failed.', 100);
+                        const errorMsg = await response.text();
+                        await addLog('Error: Submission failed – ' + errorMsg, 100);
+                        alert('Submission failed: ' + errorMsg);
                         submitBtn.disabled = false;
                     }
                 } catch (error) {

@@ -57,6 +57,8 @@ router.post('/analyze',
     const phone = req.body.phone ? req.body.phone.trim() : '';
     // Remove previous destructuring of name,email,phone
     // const { text, name, email, phone } = req.body;
+    // Extract text from request body
+    const text = req.body.text;
     // Basic checks (retain original logic for missing text/name/email)
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ error: 'Review text is required' });
