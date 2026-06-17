@@ -25,11 +25,8 @@ app.get("*", (req, res) => {
 });
 
 /* -------------------  MongoDB connection ------------------- */
-// Prefer Atlas; fallback to local MongoDB if Atlas URI not provided
-const primaryUri = process.env.MONGODB_URI; // Atlas connection string
-const fallbackUri = process.env.LOCAL_MONGODB_URI; // Local MongoDB URI
-const mongoUri = primaryUri || fallbackUri;
 
+const mongoUri = process.env.LOCAL_MONGODB_URI;
 mongoose
   .connect(mongoUri) // newer driver defaults, no deprecated options needed
   .then(() => {
@@ -55,4 +52,5 @@ mongoose
     console.error("❌ MongoDB connection error:", err);
   });
 
-mongoose.connect(mongoUri);
+
+

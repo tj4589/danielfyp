@@ -54,6 +54,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationList = document.getElementById('notification-list');
     const noNotifications = document.getElementById('no-notifications');
 
+    // Analytics elements
+    const confidenceScoreElem = document.getElementById('confidence-score');
+    const deliveryPercentElem = document.getElementById('delivery-percent');
+    const supportPercentElem = document.getElementById('support-percent');
+    const paymentPercentElem = document.getElementById('payment-percent');
+    const deliveryDetailsElem = document.getElementById('delivery-details');
+    const supportDetailsElem = document.getElementById('support-details');
+    const paymentDetailsElem = document.getElementById('payment-details');
+    const moodChartCanvas = document.getElementById('moodChart');
+    const moodDelightedPct = document.getElementById('mood-delighted-pct');
+    const moodSatisfiedPct = document.getElementById('mood-satisfied-pct');
+    const moodNeutralPct = document.getElementById('mood-neutral-pct');
+    const moodFrustratedPct = document.getElementById('mood-frustrated-pct');
+    const moodAngryPct = document.getElementById('mood-angry-pct');
+
+    let moodChartInstance = null;
+
     // Critical Alerts Modal
     const criticalAlertsContainer = document.getElementById('critical-alerts-container');
 
@@ -158,8 +175,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Backend API Integration ---
     async function fetchFeedback() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.warn('No admin token found. Redirecting to login.');
+            window.location.href = '/';
+            return;
+        }
+
         try {
-            const response = await fetch('/api/feedback');
+            const response = await fetch('/api/feedback', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
             if (response.ok) {
                 const data = await response.json();
                 
@@ -173,6 +199,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderTable(data);
                 populateNotifications(data);
                 populateCriticalAlerts(data);
+                updateSentimentTrend(data);
+                updateMoodDistribution(data);
+                updateSentimentConfidence(data);
+                updateIssueMatrix(data);
+                refreshAIInsight(data);
+            } else if (response.status === 401 || response.status === 403) {
+                console.error('Access denied: Admin access required');
+                window.location.href = '/';
+            } else {
+                console.error('Error fetching feedback:', response.statusText);
             }
         } catch (error) {
             console.error('Error fetching feedback:', error);
@@ -244,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const criticals = data.filter(item => item.sentiment === 'Critical');
         
         if (criticals.length === 0) {
-            criticalAlertsContainer.innerHTML = '<div class="text-center text-muted py-5">No critical alerts to review! You\\'re doing great.</div>';
+            criticalAlertsContainer.innerHTML = '<div class="text-center text-muted py-5">No critical alerts to review! You\'re doing great.</div>';
             return;
         }
 
@@ -268,6 +304,142 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             criticalAlertsContainer.appendChild(div);
         });
+    }
+
+    function updateSentimentTrend(data) {
+        if (!trendChartInstance) return;
+
+        const grouped = {};
+        data.forEach(item => {
+            const date = new Date(item.createdAt);
+            const hourKey = date.toLocaleString('en-US', {
+                month: 'numeric',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            grouped[hourKey] = (grouped[hourKey] || 0) + 1;
+        });
+
+        const sortedKeys = Object.keys(grouped).sort((a, b) => new Date(a) - new Date(b));
+        const values = sortedKeys.map(key => grouped[key]);
+
+        if (sortedKeys.length === 0) {
+            trendChartInstance.data.labels = ['No data yet'];
+            trendChartInstance.data.datasets[0].data = [0];
+        } else {
+            trendChartInstance.data.labels = sortedKeys;
+            trendChartInstance.data.datasets[0].data = values;
+        }
+
+        trendChartInstance.update();
+    }
+
+    function updateMoodDistribution(data) {
+        const counts = {
+            delighted: 0,
+            satisfied: 0,
+            neutral: 0,
+            frustrated: 0,
+            angry: 0
+        };
+
+        const emotionMap = {
+            joy: 'delighted',
+            delighted: 'delighted',
+            satisfied: 'satisfied',
+            mixed: 'satisfied',
+            neutral: 'neutral',
+            frustrated: 'frustrated',
+            sadness: 'frustrated',
+            anger: 'angry'
+        };
+
+        data.forEach(item => {
+            const emotion = (item.emotion || '').toLowerCase();
+            const key = emotionMap[emotion] || 'neutral';
+            counts[key] += 1;
+        });
+
+        const total = data.length || 1;
+        const values = [
+            counts.delighted,
+            counts.satisfied,
+            counts.neutral,
+            counts.frustrated,
+            counts.angry
+        ];
+
+        const percentValues = values.map(count => Math.round((count / total) * 100));
+
+        if (moodDelightedPct) moodDelightedPct.textContent = `${percentValues[0]}%`;
+        if (moodSatisfiedPct) moodSatisfiedPct.textContent = `${percentValues[1]}%`;
+        if (moodNeutralPct) moodNeutralPct.textContent = `${percentValues[2]}%`;
+        if (moodFrustratedPct) moodFrustratedPct.textContent = `${percentValues[3]}%`;
+        if (moodAngryPct) moodAngryPct.textContent = `${percentValues[4]}%`;
+
+        if (moodChartInstance) {
+            moodChartInstance.data.datasets[0].data = values;
+            moodChartInstance.update();
+        }
+    }
+
+    function updateSentimentConfidence(data) {
+        if (!confidenceScoreElem) return;
+
+        const score = data.reduce((sum, item) => {
+            const sentiment = (item.sentiment || '').toLowerCase();
+            if (sentiment === 'positive') return sum + 96;
+            if (sentiment === 'neutral') return sum + 88;
+            if (sentiment === 'critical') return sum + 82;
+            return sum + 90;
+        }, 0);
+
+        const average = data.length ? Math.round(score / data.length) : 0;
+        confidenceScoreElem.textContent = `${average}%`;
+    }
+
+    function updateIssueMatrix(data) {
+        if (!deliveryPercentElem || !supportPercentElem || !paymentPercentElem) return;
+
+        const counts = data.reduce((acc, item) => {
+            const text = (item.snippet || '').toLowerCase();
+            if (['delivery', 'delay', 'late', 'shipping', 'dispatch'].some(word => text.includes(word))) acc.delivery += 1;
+            if (['support', 'agent', 'response', 'customer care', 'service'].some(word => text.includes(word))) acc.support += 1;
+            if (['payment', 'refund', 'billing', 'charged', 'invoice'].some(word => text.includes(word))) acc.payment += 1;
+            return acc;
+        }, { delivery: 0, support: 0, payment: 0 });
+
+        const total = data.length || 1;
+        deliveryPercentElem.textContent = `${Math.round((counts.delivery / total) * 100)}%`;
+        supportPercentElem.textContent = `${Math.round((counts.support / total) * 100)}%`;
+        paymentPercentElem.textContent = `${Math.round((counts.payment / total) * 100)}%`;
+
+        if (deliveryDetailsElem) {
+            deliveryDetailsElem.innerHTML = `<strong>${counts.delivery}</strong> mentions detected.<br>Mostly related to delayed shipping and delivery timing.`;
+        }
+        if (supportDetailsElem) {
+            supportDetailsElem.innerHTML = `<strong>${counts.support}</strong> mentions detected.<br>Mainly related to support response time and customer service.`;
+        }
+        if (paymentDetailsElem) {
+            paymentDetailsElem.innerHTML = `<strong>${counts.payment}</strong> mentions detected.<br>Mostly billing complaints, refunds and payment confirmation issues.`;
+        }
+    }
+
+    function refreshAIInsight(data) {
+        if (!aiInsightText) return;
+
+        const total = data.length;
+        const critical = data.filter(item => item.sentiment === 'Critical').length;
+        const dominantEmotion = data.reduce((acc, item) => {
+            const emotion = item.emotion || 'Neutral';
+            acc[emotion] = (acc[emotion] || 0) + 1;
+            return acc;
+        }, {});
+        const topEmotion = Object.entries(dominantEmotion).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Neutral';
+        const avgConfidence = data.length ? Math.round(data.reduce((sum, item) => sum + (item.confidence || 0), 0) / data.length) : 0;
+
+        aiInsightText.textContent = `Across ${total} feedback submissions, ${critical} (${total ? Math.round((critical / total) * 100) : 0}%) were critical. Most common emotion is ${topEmotion}, with an average confidence of ${avgConfidence}%.`;
     }
 
     function getEmotionIcon(emotion) {
@@ -313,6 +485,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="review-text small fw-medium text-truncate" style="max-width: 300px;">${item.snippet}</div>
                 </td>
                 <td>
+                    <div class="small text-body text-truncate" style="max-width: 140px;">${item.name || 'Anonymous'}</div>
+                </td>
+                <td>
+                    <div class="small text-muted text-truncate" style="max-width: 180px;">${item.email || 'N/A'}</div>
+                </td>
+                <td>
                     <div class="text-warning small letter-spacing-1 rating-stars">
                         ${starsHtml}
                     </div>
@@ -333,11 +511,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         filterTable();
     }
-
-    fetchFeedback();
-    
-    // Poll for new data every 5 seconds to simulate real-time notifications
-    setInterval(fetchFeedback, 5000);
 
     if(runAnalysisBtn) {
         runAnalysisBtn.addEventListener('click', async () => {
@@ -501,9 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 scales: {
                     y: {
-                        beginAtZero: false,
-                        min: 50,
-                        max: 100,
+                        beginAtZero: true,
                         grid: {
                             color: 'rgba(0,0,0,0.05)',
                             drawBorder: false,
@@ -525,6 +696,44 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         trendChartInstance = new Chart(ctx, chartConfig);
     }
+
+    if (moodChartCanvas) {
+        const moodCtx = moodChartCanvas.getContext('2d');
+        moodChartInstance = new Chart(moodCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Delighted', 'Satisfied', 'Neutral', 'Frustrated', 'Angry'],
+                datasets: [{
+                    data: [0, 0, 0, 0, 0],
+                    backgroundColor: ['#10B981', '#3B82F6', '#9CA3AF', '#FBBF24', '#EF4444'],
+                    borderWidth: 0,
+                    hoverOffset: 6,
+                    cutout: '70%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                        bodyFont: { family: 'Space Grotesk', size: 12 },
+                        padding: 10,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.label}: ${context.parsed}%`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    fetchFeedback();
+    setInterval(fetchFeedback, 5000);
 
     // Issue Matrix Expansion Logic
     const expandMatrixBtn = document.getElementById('expand-matrix-btn');

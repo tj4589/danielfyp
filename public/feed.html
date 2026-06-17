@@ -420,23 +420,6 @@
                   "Maximum file size 50MB";
 
                 fetchRecent();
-
-                // ---- Also send the typed review as a CSV to the admin endpoint ----
-                // Build a simple CSV string with the same columns used by the upload UI
-                const csvHeader = "snippet,rating,name,email,phone";
-                const rating =
-                  document
-                    .querySelector(".quality-score")
-                    ?.textContent?.trim() || "";
-                const csvRow = `"${text.replace(/"/g, '""')}",${rating},${document.getElementById("user-name").value.trim()},${document.getElementById("user-email").value.trim()},${document.getElementById("user-phone").value.trim()}`;
-                const csvContent = `${csvHeader}\n${csvRow}`;
-                // Create a File object and reuse the existing uploadCsv helper
-                const csvFile = new File([csvContent], "review.csv", {
-                  type: "text/csv",
-                });
-                uploadCsv(csvFile);
-                // Refresh recent list once after upload
-                fetchRecent();
               }, 1000);
             } else {
               const errorMsg = await response.text();

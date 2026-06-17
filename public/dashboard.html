@@ -23,211 +23,6 @@
     <!-- Chart.js for Trend Tracking -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
-  <script>
-    let trendChart;
-
-    document.addEventListener("DOMContentLoaded", () => {
-      initTrendChart();
-      loadDashboard();
-    });
-
-    function initTrendChart() {
-      const ctx = document.getElementById("trendChart");
-
-      if (!ctx) return;
-
-      trendChart = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: [],
-          datasets: [
-            {
-              label: "Feedback Volume",
-              data: [],
-              tension: 0.35,
-              borderWidth: 2,
-              fill: false,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-        },
-      });
-    }
-
-    async function loadDashboard() {
-      try {
-        const res = await fetch("/api/feedback");
-        const feedbacks = await res.json();
-
-        updateMetrics(feedbacks);
-        updateTrendChart(feedbacks);
-        updateIssueMatrix(feedbacks);
-        updateConfidence(feedbacks);
-        updateAILog(feedbacks);
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    function updateMetrics(feedbacks) {
-      const total = feedbacks.length;
-      let ratingTotal = 0;
-      let positive = 0;
-      let critical = 0;
-
-      feedbacks.forEach((item) => {
-        const sentiment = (item.sentiment || "").toLowerCase();
-
-        const text = (item.review || "").toLowerCase();
-
-        if (
-          sentiment === "critical" ||
-          text.includes("refund") ||
-          text.includes("angry") ||
-          text.includes("terrible") ||
-          text.includes("worst")
-        ) {
-          critical++;
-        }
-      });
-
-      const avgRating = total ? (ratingTotal / total).toFixed(1) : "0.0";
-      const healthScore = total ? Math.round((positive / total) * 100) : 0;
-
-      document.getElementById("metric-total").textContent = total;
-      document.getElementById("metric-rating").textContent = avgRating;
-      document.getElementById("metric-health").textContent = healthScore;
-      document.getElementById("metric-critical").textContent = critical;
-    }
-
-    function updateTrendChart(feedbacks) {
-      const grouped = {};
-
-      feedbacks.forEach((item) => {
-        const date = new Date(item.createdAt).toLocaleDateString();
-
-        grouped[date] = (grouped[date] || 0) + 1;
-      });
-
-      trendChart.data.labels = Object.keys(grouped);
-      trendChart.data.datasets[0].data = Object.values(grouped);
-
-      trendChart.update();
-    }
-
-    function updateConfidence(feedbacks) {
-      if (!feedbacks.length) return;
-
-      let score = 0;
-
-      feedbacks.forEach((item) => {
-        const sentiment = (item.sentiment || "").toLowerCase();
-
-        if (sentiment === "positive") score += 96;
-        else if (sentiment === "neutral") score += 88;
-        else if (sentiment === "negative" || sentiment === "critical")
-          score += 82;
-        else score += 90;
-      });
-
-      const average = Math.round(score / feedbacks.length);
-
-      document.getElementById("confidence-score").textContent = average + "%";
-    }
-
-    function updateIssueMatrix(feedbacks) {
-      const issueKeywords = {
-        delivery: ["delivery", "delay", "late", "shipping", "dispatch"],
-
-        support: ["support", "agent", "response", "customer care"],
-
-        payment: ["payment", "refund", "billing", "charged"],
-      };
-
-      const issueCount = {
-        delivery: 0,
-        support: 0,
-        payment: 0,
-      };
-
-      feedbacks.forEach((item) => {
-        const text = (item.review || item.snippet || "").toLowerCase();
-
-        for (const issue in issueKeywords) {
-          if (issueKeywords[issue].some((word) => text.includes(word))) {
-            issueCount[issue]++;
-          }
-        }
-      });
-
-      const total = feedbacks.length || 1;
-
-      document.getElementById("delivery-percent").textContent =
-        Math.round((issueCount.delivery / total) * 100) + "%";
-
-      document.getElementById("support-percent").textContent =
-        Math.round((issueCount.support / total) * 100) + "%";
-
-      document.getElementById("payment-percent").textContent =
-        Math.round((issueCount.payment / total) * 100) + "%";
-
-      populateIssueDetails(issueCount);
-    }
-
-    function populateIssueDetails(issueCount) {
-      document.getElementById("delivery-details").innerHTML = `
-        <strong>${issueCount.delivery}</strong> mentions detected.
-        <br>
-        Most linked to delayed shipping and dispatch timing.
-    `;
-
-      document.getElementById("support-details").innerHTML = `
-        <strong>${issueCount.support}</strong> mentions detected.
-        <br>
-        Mainly related to response time and support interaction quality.
-    `;
-
-      document.getElementById("payment-details").innerHTML = `
-        <strong>${issueCount.payment}</strong> mentions detected.
-        <br>
-        Mostly billing complaints, refunds and payment confirmation delays.
-    `;
-    }
-
-    function toggleIssue(id) {
-      const element = document.getElementById(id);
-
-      if (element.style.display === "none" || element.style.display === "") {
-        element.style.display = "block";
-      } else {
-        element.style.display = "none";
-      }
-    }
-
-    function updateAILog(feedbacks) {
-      const table = document.getElementById("feedback-table-body");
-
-      table.innerHTML = "";
-
-      feedbacks
-        .slice()
-        .reverse()
-        .forEach((item) => {
-          table.innerHTML += `
-                <tr>
-                    <td class="ps-4">${item.review || item.snippet || ""}</td>
-                    <td>${item.rating || "-"}</td>
-                    <td>${item.emotion || "-"}</td>
-                    <td>${item.confidence || 90}%</td>
-                    <td class="pe-4 text-end">${item.sentiment || "-"}</td>
-                </tr>
-            `;
-        });
-    }
-  </script>
   <body>
     <div id="app" class="min-vh-100 d-flex flex-column">
       <!-- Top Navigation Bar -->
@@ -487,50 +282,18 @@
                         class="donut-container mb-3"
                         style="width: 140px; height: 140px; position: relative"
                       >
-                        <svg
-                          viewBox="0 0 36 36"
-                          class="circular-chart w-100 h-100"
-                        >
-                          <path
-                            class="circle angry"
-                            stroke-dasharray="5, 100"
-                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          />
-                          <path
-                            class="circle frustrated"
-                            stroke-dasharray="15, 100"
-                            stroke-dashoffset="-5"
-                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          />
-                          <path
-                            class="circle neutral"
-                            stroke-dasharray="20, 100"
-                            stroke-dashoffset="-20"
-                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          />
-                          <path
-                            class="circle satisfied"
-                            stroke-dasharray="35, 100"
-                            stroke-dashoffset="-40"
-                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          />
-                          <path
-                            class="circle delighted"
-                            stroke-dasharray="25, 100"
-                            stroke-dashoffset="-75"
-                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          />
-                          <text
-                            x="18"
-                            y="20.35"
-                            class="chart-center-text small fw-semibold"
-                          >
-                            Mood
-                          </text>
-                        </svg>
+                        <canvas id="moodChart" width="140" height="140"></canvas>
+                      </div>
+                      <div id="mood-percentages" style="text-align: center; font-size: 11px; margin-top: 8px;">
+                        <div><span style="color: #10B981;">●</span> Delighted: <span id="mood-delighted-pct">0%</span></div>
+                        <div><span style="color: #3B82F6;">●</span> Satisfied: <span id="mood-satisfied-pct">0%</span></div>
+                        <div><span style="color: #9CA3AF;">●</span> Neutral: <span id="mood-neutral-pct">0%</span></div>
+                        <div><span style="color: #FBBF24;">●</span> Frustrated: <span id="mood-frustrated-pct">0%</span></div>
+                        <div><span style="color: #EF4444;">●</span> Angry: <span id="mood-angry-pct">0%</span></div>
                       </div>
                       <div
                         class="d-flex flex-wrap justify-content-center gap-2"
+                        style="margin-top: 12px"
                       >
                         <div
                           class="d-flex align-items-center gap-1 small text-muted"
@@ -880,6 +643,8 @@
                         <th class="ps-4 fw-medium text-muted small py-3">
                           Review Snippet
                         </th>
+                        <th class="fw-medium text-muted small py-3">Name</th>
+                        <th class="fw-medium text-muted small py-3">Email</th>
                         <th class="fw-medium text-muted small py-3">Rating</th>
                         <th class="fw-medium text-muted small py-3">
                           Key Emotion

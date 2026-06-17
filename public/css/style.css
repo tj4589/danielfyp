@@ -121,17 +121,31 @@ body {
 }
 
 /* Donut Chart */
-.circle {
+.circular-chart {
     fill: none;
-    stroke-width: 4;
+    transform: rotate(-90deg);
+}
+
+.circular-chart circle {
+    fill: none;
+    stroke-width: 12;
     stroke-linecap: round;
     transition: stroke-width 0.2s, filter 0.2s;
     cursor: pointer;
 }
-.circle:hover {
-    stroke-width: 5;
-    filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.1));
+
+.circular-chart circle:hover {
+    stroke-width: 14;
+    filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.15));
 }
+
+.circle {
+    fill: none;
+    stroke-width: 12;
+    stroke-linecap: round;
+    transition: all 0.3s ease;
+}
+
 .circle.angry { stroke: var(--angry); }
 .circle.frustrated { stroke: var(--frustrated); }
 .circle.neutral { stroke: var(--chart-neutral); }
@@ -140,6 +154,8 @@ body {
 
 .chart-center-text {
     fill: var(--bs-body-color);
+    font-size: 14px;
+    font-weight: 600;
 }
 
 /* Animations for Issue Bars */

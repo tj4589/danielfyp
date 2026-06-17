@@ -1,10 +1,15 @@
+const User = require("../models/User");
 const express = require('express');
 const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
 const Feedback = require('../models/Feedback'); // Mongoose model
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { authenticate, authorize } = require('../middleware/auth');
+const jwtSecret = process.env.JWT_SECRET || 'dev-secret-key';
 
-// GET /api/feedback - Retrieve all feedback (newest first)
-router.get('/feedback', async (req, res) => {
+// GET /api/feedback - Retrieve all feedback (admin only)
+router.get('/feedback', authenticate, authorize('admin'), async (req, res) => {
   try {
     const feedback = await Feedback.find().sort({ createdAt: -1 });
     res.json(feedback);
@@ -14,8 +19,8 @@ router.get('/feedback', async (req, res) => {
   }
 });
 
-// GET /api/user/feedback - Retrieve recent feedback for the user feed (latest 5)
-router.get('/user/feedback', async (req, res) => {
+// GET /api/user/feedback - Retrieve recent feedback for the user feed (admin only)
+router.get('/user/feedback', authenticate, authorize('admin'), async (req, res) => {
   try {
     const recent = await Feedback.find()
       .sort({ createdAt: -1 })
@@ -26,17 +31,102 @@ router.get('/user/feedback', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch user feedback' });
   }
 });
+router.post("/register", async (req, res) => {
 
-// POST /api/login - Mock login system
-router.post('/login', (req, res) => {
-  const { username, password } = req.body;
+  try {
 
-  if (username === 'admin' && password === 'admin123') {
-    return res.json({ success: true, role: 'admin', redirect: '/dashboard.html' });
-  } else if (username === 'user' && password === 'user123') {
-    return res.json({ success: true, role: 'user', redirect: '/feed.html' });
-  } else {
-    return res.status(401).json({ success: false, error: 'Invalid username or password' });
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ success: false, error: 'Username and password are required' });
+    }
+
+    const existingUser = await User.findOne({
+      username
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        error: "Username already exists"
+      });
+    }
+
+    // Hash the password before saving
+    const hashed = await bcrypt.hash(password, 10);
+    const user = new User({
+      username,
+      password: hashed,
+      role: "user"
+    });
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Registration successful"
+    });
+
+  } catch (err) {
+
+    res.status(500).json({
+      error: "Registration failed"
+    });
+
+  }
+
+});
+// POST /api/login - Login with hardcoded admin or registered users
+router.post("/login", async (req, res) => {
+
+  try {
+
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ success: false, error: 'Username and password are required' });
+    }
+
+    // Check hardcoded admin credentials
+    if (username === 'admin' && password === 'admin123') {
+      const token = jwt.sign({ id: 'admin-user', role: 'admin' }, jwtSecret, { expiresIn: '8h' });
+      return res.json({
+        success: true,
+        role: 'admin',
+        token,
+        redirect: '/dashboard.html'
+      });
+    }
+
+    // Check registered users in database
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Invalid username or password' });
+    }
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(401).json({ success: false, error: 'Invalid username or password' });
+    }
+
+    const redirect =
+      user.role === "admin"
+        ? "/dashboard.html"
+        : "/feed.html";
+
+    const token = jwt.sign({ id: user._id, role: user.role }, jwtSecret, { expiresIn: '8h' });
+
+    res.json({
+      success: true,
+      role: user.role,
+      token,
+      redirect
+    });
+
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({
+      success: false,
+      error: "Login failed"
+    });
   }
 });
 
@@ -66,15 +156,21 @@ router.post('/analyze',
 
     // ---- Simple mock analysis ----
     const textLower = text.toLowerCase();
-    const positiveKeywords = ['amazing', 'great', 'love', 'excellent', 'good', 'best', 'smooth', 'exceeded'];
-    const negativeKeywords = ['bad', 'terrible', 'upset', 'hate', 'delayed', 'slow', 'poor', 'ignored', 'frustrated'];
+    const positiveKeywords = ['amazing', 'great', 'love', 'excellent', 'good', 'best', 'smooth', 'exceeded', 'happy', 'fantastic', 'awesome', 'perfect', 'easy', 'helpful', 'fast', 'enjoy', 'satisfied'];
+    const negativeKeywords = ['bad', 'terrible', 'upset', 'hate', 'delayed', 'slow', 'poor', 'ignored', 'frustrated', 'worst', 'broken', 'issue', 'problem', 'angry', 'delay', 'refund', 'late', 'rude', 'unsatisfied', 'missing', 'damaged'];
     const positiveCount = positiveKeywords.filter(w => textLower.includes(w)).length;
     const negativeCount = negativeKeywords.filter(w => textLower.includes(w)).length;
     let rating = 3;
     let emotion = 'Neutral';
     let sentiment = 'Neutral';
-    let confidence = Math.floor(Math.random() * (99 - 80 + 1) + 80);
-    if (positiveCount > negativeCount) {
+    let confidence = Math.floor(Math.random() * (90 - 75 + 1) + 75);
+
+    if (positiveCount > 0 && negativeCount > 0) {
+      sentiment = 'Neutral';
+      emotion = 'Neutral';
+      rating = 3;
+      confidence = Math.floor(Math.random() * (85 - 65 + 1) + 65);
+    } else if (positiveCount > negativeCount) {
       rating = Math.min(5, 3 + positiveCount);
       emotion = positiveCount > 2 ? 'Delighted' : 'Joy';
       sentiment = 'Positive';
@@ -82,11 +178,13 @@ router.post('/analyze',
       rating = Math.max(1, 3 - negativeCount);
       emotion = negativeCount > 2 ? 'Frustrated' : 'Anger';
       sentiment = 'Critical';
-    } else if (positiveCount > 0 && negativeCount > 0) {
-      rating = 3;
-      emotion = 'Mixed';
+    }
+
+    if (positiveCount === 0 && negativeCount === 0) {
       sentiment = 'Neutral';
-      confidence = Math.floor(Math.random() * (79 - 60 + 1) + 60);
+      emotion = 'Neutral';
+      rating = 3;
+      confidence = Math.floor(Math.random() * (80 - 65 + 1) + 65);
     }
     const snippet = text.length > 80 ? text.substring(0, 77) + '...' : text;
     const newFeedback = new Feedback({
@@ -113,8 +211,8 @@ router.post('/analyze',
 
 
 
-// GET single feedback by ID
-router.get('/feedback/:id',
+// GET single feedback by ID (admin only)
+router.get('/feedback/:id', authenticate, authorize('admin'),
   param('id').isMongoId().withMessage('Invalid ID'),
   (req, res) => {
     const errors = validationResult(req);

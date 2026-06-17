@@ -129,6 +129,27 @@
               </button>
             </form>
 
+            <div class="text-center">
+              <p class="small text-muted">Don't have an account? <a href="#" id="show-register">Create one</a></p>
+            </div>
+
+            <form id="register-form" class="d-none mt-3">
+              <div id="register-error" class="alert alert-danger d-none small py-2" role="alert"></div>
+              <div id="register-success" class="alert alert-success d-none small py-2" role="alert">Registration successful. You can now sign in.</div>
+              <div class="mb-3">
+                <label class="form-label small fw-medium text-muted">Username</label>
+                <input type="text" id="reg-username" class="form-control bg-body-tertiary py-2 border-0 rounded-3" placeholder="choose a username" required />
+              </div>
+              <div class="mb-4">
+                <label class="form-label small fw-medium text-muted">Password</label>
+                <input type="password" id="reg-password" class="form-control bg-body-tertiary py-2 border-0 rounded-3" placeholder="create a password" required />
+              </div>
+              <button type="submit" id="register-btn" class="btn btn-outline-primary w-100 py-2 rounded-3 fw-semibold mb-4">Create Account</button>
+              <div class="text-center">
+                <p class="small text-muted mb-0">Already have an account? <a href="#" id="show-login">Sign in</a></p>
+              </div>
+            </form>
+
             <!-- <div class="text-center">
                         <p class="small text-muted mb-0">Demo Accounts:</p>
                         <p class="small text-muted mb-0">Admin: <code>admin</code> / <code>admin123</code></p>
