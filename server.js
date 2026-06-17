@@ -26,7 +26,7 @@ app.get("*", (req, res) => {
 
 /* -------------------  MongoDB connection ------------------- */
 
-const mongoUri = process.env.LOCAL_MONGODB_URI;
+const mongoUri = process.env.MONGODB_URI || process.env.LOCAL_MONGODB_URI;
 mongoose
   .connect(mongoUri) // newer driver defaults, no deprecated options needed
   .then(() => {
