@@ -73,6 +73,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Critical Alerts Modal
     const criticalAlertsContainer = document.getElementById('critical-alerts-container');
+    const feedbackDetailModalElement = document.getElementById('feedbackDetailModal');
+    const feedbackDetailModal = feedbackDetailModalElement ? new bootstrap.Modal(feedbackDetailModalElement) : null;
 
     // 1. Dark Mode Toggle
     if (themeToggleBtn) {
@@ -465,6 +467,94 @@ document.addEventListener('DOMContentLoaded', () => {
         return map[sentiment] || 'bg-secondary-subtle text-secondary';
     }
 
+    function getFeedbackTheme(item) {
+        const sentiment = (item.sentiment || '').toLowerCase();
+        const emotion = (item.emotion || '').toLowerCase();
+        if (sentiment === 'positive' || ['joy', 'delighted', 'satisfied', 'happy'].includes(emotion)) {
+            return 'positive';
+        }
+        if (sentiment === 'neutral' || emotion === 'neutral') {
+            return 'neutral';
+        }
+        return 'negative';
+    }
+
+    function getFeedbackRecommendation(item) {
+        const theme = getFeedbackTheme(item);
+        if (theme === 'positive') {
+            return 'This customer was pleased with your service. Consider using this review as social proof in a testimonial, promotional video, landing page, or marketing campaign.';
+        }
+        if (theme === 'neutral') {
+            return 'This customer appears moderately satisfied. Consider reaching out to understand what prevented them from having a stronger experience. You may offer support, a follow-up conversation, or an incentive to encourage them to try the service again.';
+        }
+        return 'This customer had a strongly negative experience. Review the feedback carefully to understand the root cause of the frustration. Follow up with the customer, acknowledge the issue, fix the underlying problem, and consider offering a goodwill gesture to rebuild trust.';
+    }
+
+    function buildRatingStars(rating) {
+        let html = '';
+        for (let i = 0; i < 5; i += 1) {
+            html += i < rating ? '<i class="ph-fill ph-star"></i>' : '<i class="ph ph-star"></i>';
+        }
+        return html;
+    }
+
+    function openFeedbackDetailModal(item) {
+        if (!feedbackDetailModalElement || !feedbackDetailModal) return;
+        const header = document.getElementById('feedback-detail-header');
+        const icon = document.getElementById('feedback-detail-icon');
+        const body = document.getElementById('feedback-detail-body');
+
+        const theme = getFeedbackTheme(item);
+        header.classList.remove('modal-theme-positive', 'modal-theme-neutral', 'modal-theme-negative');
+        header.classList.add(`modal-theme-${theme}`);
+
+        if (icon) {
+            icon.className = 'ph fs-4';
+            if (theme === 'positive') icon.classList.add('ph-heart');
+            else if (theme === 'neutral') icon.classList.add('ph-smiley-blank');
+            else icon.classList.add('ph-warning-octagon');
+        }
+
+        body.innerHTML = `
+            <div class="row g-3">
+                <div class="col-12">
+                    <div class="small feedback-detail-label">Review Snippet</div>
+                    <p class="mb-3">${item.snippet || 'No review snippet available.'}</p>
+                </div>
+                <div class="col-md-6">
+                    <div class="small feedback-detail-label">Customer Name</div>
+                    <div class="feedback-detail-value">${item.name || 'Anonymous'}</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="small feedback-detail-label">Customer Email</div>
+                    <div class="feedback-detail-value">${item.email || 'N/A'}</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="small feedback-detail-label">Rating</div>
+                    <div class="feedback-detail-value text-warning rating-stars">${buildRatingStars(item.rating || 0)}</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="small feedback-detail-label">Key Emotion</div>
+                    <div class="feedback-detail-value">${item.emotion || 'N/A'}</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="small feedback-detail-label">Confidence Score</div>
+                    <div class="feedback-detail-value">${item.confidence != null ? `${item.confidence}%` : 'N/A'}</div>
+                </div>
+                <div class="col-12">
+                    <div class="small feedback-detail-label">Sentiment</div>
+                    <div class="feedback-detail-value">${item.sentiment || 'N/A'}</div>
+                </div>
+                <div class="col-12 pt-3 border-top">
+                    <h6 class="mb-2">Recommendation</h6>
+                    <p class="small text-muted mb-0">${getFeedbackRecommendation(item)}</p>
+                </div>
+            </div>
+        `;
+
+        feedbackDetailModal.show();
+    }
+
     function renderTable(data) {
         if (!tableBody) return;
         tableBody.innerHTML = '';
@@ -506,6 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
             `;
             tableBody.appendChild(tr);
+            tr.addEventListener('click', () => openFeedbackDetailModal(item));
             tableRows.push(tr);
         });
 

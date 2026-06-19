@@ -187,6 +187,35 @@ body {
     background-color: rgba(255, 255, 255, 0.03);
 }
 
+.modal-theme-positive .modal-header {
+    background-color: #10b981 !important;
+    color: #ffffff !important;
+}
+
+.modal-theme-neutral .modal-header {
+    background-color: #6c757d !important;
+    color: #ffffff !important;
+}
+
+.modal-theme-negative .modal-header {
+    background-color: #dc2626 !important;
+    color: #ffffff !important;
+}
+
+.feedback-detail-label {
+    font-size: 0.85rem;
+    color: var(--bs-secondary);
+}
+
+.feedback-detail-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.feedback-detail-row {
+    gap: 1.5rem;
+}
+
 /* Issue Matrix Expanded State */
 .issue-matrix-expanded {
     position: fixed;

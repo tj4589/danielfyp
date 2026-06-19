@@ -7,6 +7,139 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { authenticate, authorize } = require('../middleware/auth');
 const jwtSecret = process.env.JWT_SECRET || 'dev-secret-key';
+const MAX_CSV_SIZE = 50 * 1024 * 1024; // 50MB
+
+const POSITIVE_KEYWORDS = [
+  'amazing', 'great', 'love', 'excellent', 'good', 'best', 'smooth', 'exceeded', 'happy', 'fantastic', 'awesome', 'perfect', 'easy', 'helpful', 'fast', 'enjoy', 'satisfied'
+];
+const NEGATIVE_KEYWORDS = [
+  'bad', 'terrible', 'upset', 'hate', 'delayed', 'slow', 'poor', 'ignored', 'frustrated', 'worst', 'broken', 'issue', 'problem', 'angry', 'delay', 'refund', 'late', 'rude', 'unsatisfied', 'missing', 'damaged'
+];
+
+function normalizeCsvRow(row) {
+  const normalized = {};
+  Object.keys(row || {}).forEach((key) => {
+    const normalizedKey = String(key || '').trim().toLowerCase();
+    normalized[normalizedKey] = row[key] == null ? '' : String(row[key]).trim();
+  });
+  return normalized;
+}
+
+function getCsvFieldValue(row, keys = [], allowFallback = false) {
+  for (const key of keys) {
+    const value = row[key] || '';
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  if (allowFallback) {
+    const fallback = Object.values(row).find(
+      (field) => typeof field === 'string' && field.trim().length > 40,
+    );
+    return fallback ? fallback.trim() : '';
+  }
+
+  return '';
+}
+
+function extractCsvReviewData(normalizedRow) {
+  const reviewText = getCsvFieldValue(normalizedRow, [
+    'text',
+    'review',
+    'snippet',
+    'comment',
+    'feedback',
+    'review text',
+    'review_text',
+    'reviewtext',
+    'customer review',
+    'message'
+  ], true);
+
+  const name = getCsvFieldValue(normalizedRow, [
+    'name',
+    'customer',
+    'reviewer',
+    'user',
+    'author'
+  ]);
+
+  const email = getCsvFieldValue(normalizedRow, [
+    'email',
+    'e-mail',
+    'email address',
+    'email_address'
+  ]);
+
+  const phone = getCsvFieldValue(normalizedRow, [
+    'phone',
+    'telephone',
+    'mobile',
+    'contact',
+    'phone number',
+    'phone_number'
+  ]);
+
+  return { reviewText, name, email, phone };
+}
+
+function isValidEmail(email) {
+  return typeof email === 'string' && email.trim().length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+}
+
+function analyzeReviewSubmission({ text, name, email, phone }) {
+  const reviewText = typeof text === 'string' ? text.trim() : '';
+  const normalizedText = reviewText.toLowerCase();
+  const safeName = name && typeof name === 'string' && name.trim() ? name.trim() : 'Anonymous';
+  const safeEmail = isValidEmail(email) ? email.trim() : 'anonymous@example.com';
+  const safePhone = phone && typeof phone === 'string' ? phone.trim() : '';
+
+  const positiveCount = POSITIVE_KEYWORDS.filter((term) => normalizedText.includes(term)).length;
+  const negativeCount = NEGATIVE_KEYWORDS.filter((term) => normalizedText.includes(term)).length;
+
+  let sentiment = 'Neutral';
+  let emotion = 'Neutral';
+  let rating = 3;
+  let confidence = Math.floor(Math.random() * (90 - 75 + 1) + 75);
+
+  if (positiveCount > 0 && negativeCount > 0) {
+    sentiment = 'Neutral';
+    emotion = 'Neutral';
+    rating = 3;
+    confidence = Math.floor(Math.random() * (85 - 65 + 1) + 65);
+  } else if (positiveCount > negativeCount) {
+    sentiment = 'Positive';
+    emotion = positiveCount > 2 ? 'Delighted' : 'Joy';
+    rating = Math.min(5, 3 + positiveCount);
+  } else if (negativeCount > positiveCount) {
+    sentiment = 'Critical';
+    emotion = negativeCount > 2 ? 'Frustrated' : 'Anger';
+    rating = Math.max(1, 3 - negativeCount);
+  }
+
+  if (positiveCount === 0 && negativeCount === 0) {
+    sentiment = 'Neutral';
+    emotion = 'Neutral';
+    rating = 3;
+    confidence = Math.floor(Math.random() * (80 - 65 + 1) + 65);
+  }
+
+  rating = Math.min(5, Math.max(1, rating));
+  const snippet = reviewText.length > 80 ? reviewText.substring(0, 77) + '...' : reviewText;
+
+  return {
+    snippet,
+    rating,
+    emotion,
+    confidence,
+    sentiment,
+    name: safeName,
+    email: safeEmail,
+    phone: safePhone,
+    createdAt: new Date()
+  };
+}
 
 // GET /api/feedback - Retrieve all feedback (admin only)
 router.get('/feedback', authenticate, authorize('admin'), async (req, res) => {
@@ -137,75 +270,32 @@ router.post('/analyze',
       body('email').optional().isString().withMessage('Email must be a string'),
       body('phone').optional().isString().withMessage('Phone must be a string')
     ],
-  (req, res) => {
+  async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    const name = req.body.name && req.body.name.trim() ? req.body.name.trim() : 'Anonymous';
-    const email = req.body.email && req.body.email.trim() ? req.body.email.trim() : 'anonymous@example.com';
-    const phone = req.body.phone ? req.body.phone.trim() : '';
-    // Remove previous destructuring of name,email,phone
-    // const { text, name, email, phone } = req.body;
-    // Extract text from request body
+
     const text = req.body.text;
-    // Basic checks (retain original logic for missing text/name/email)
-    if (!text || typeof text !== 'string') {
+    if (!text || typeof text !== 'string' || !text.trim()) {
       return res.status(400).json({ error: 'Review text is required' });
     }
 
-    // ---- Simple mock analysis ----
-    const textLower = text.toLowerCase();
-    const positiveKeywords = ['amazing', 'great', 'love', 'excellent', 'good', 'best', 'smooth', 'exceeded', 'happy', 'fantastic', 'awesome', 'perfect', 'easy', 'helpful', 'fast', 'enjoy', 'satisfied'];
-    const negativeKeywords = ['bad', 'terrible', 'upset', 'hate', 'delayed', 'slow', 'poor', 'ignored', 'frustrated', 'worst', 'broken', 'issue', 'problem', 'angry', 'delay', 'refund', 'late', 'rude', 'unsatisfied', 'missing', 'damaged'];
-    const positiveCount = positiveKeywords.filter(w => textLower.includes(w)).length;
-    const negativeCount = negativeKeywords.filter(w => textLower.includes(w)).length;
-    let rating = 3;
-    let emotion = 'Neutral';
-    let sentiment = 'Neutral';
-    let confidence = Math.floor(Math.random() * (90 - 75 + 1) + 75);
-
-    if (positiveCount > 0 && negativeCount > 0) {
-      sentiment = 'Neutral';
-      emotion = 'Neutral';
-      rating = 3;
-      confidence = Math.floor(Math.random() * (85 - 65 + 1) + 65);
-    } else if (positiveCount > negativeCount) {
-      rating = Math.min(5, 3 + positiveCount);
-      emotion = positiveCount > 2 ? 'Delighted' : 'Joy';
-      sentiment = 'Positive';
-    } else if (negativeCount > positiveCount) {
-      rating = Math.max(1, 3 - negativeCount);
-      emotion = negativeCount > 2 ? 'Frustrated' : 'Anger';
-      sentiment = 'Critical';
-    }
-
-    if (positiveCount === 0 && negativeCount === 0) {
-      sentiment = 'Neutral';
-      emotion = 'Neutral';
-      rating = 3;
-      confidence = Math.floor(Math.random() * (80 - 65 + 1) + 65);
-    }
-    const snippet = text.length > 80 ? text.substring(0, 77) + '...' : text;
-    const newFeedback = new Feedback({
-      snippet,
-      rating,
-      emotion,
-      confidence,
-      sentiment,
-      name,
-      email,
-      phone,
-      createdAt: new Date()
+    const feedbackData = analyzeReviewSubmission({
+      text,
+      name: req.body.name,
+      email: req.body.email,
+      phone: req.body.phone
     });
-    newFeedback.save()
-      .then(() => {
-        setTimeout(() => res.status(201).json(newFeedback), 1500);
-      })
-      .catch(err => {
-        console.error('POST /api/analyze save error:', err);
-        res.status(500).json({ error: 'Failed to save feedback' });
-      });
+
+    try {
+      const newFeedback = new Feedback(feedbackData);
+      const savedFeedback = await newFeedback.save();
+      setTimeout(() => res.status(201).json(savedFeedback), 1500);
+    } catch (err) {
+      console.error('POST /api/analyze save error:', err);
+      res.status(500).json({ error: 'Failed to save feedback' });
+    }
   }
 );
 
@@ -242,42 +332,100 @@ const ADMIN_TOKEN = 'admin-secret'; // Simple admin token for CSV uploads
 const upload = multer({ dest: path.join(__dirname, '../uploads/') });
 
 // CSV upload endpoint – secured with admin token
-router.post('/csv', upload.single('file'), (req, res) => {
-    const token = req.headers['x-admin-token'];
-    if (token !== ADMIN_TOKEN) {
-        return res.status(403).json({ error: 'Invalid admin token' });
+router.post('/csv', upload.single('file'), async (req, res) => {
+  const token = req.headers['x-admin-token'];
+  if (token !== ADMIN_TOKEN) {
+    if (req.file) await fs.promises.unlink(req.file.path).catch(() => {});
+    return res.status(403).json({ error: 'Invalid admin token' });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  const fileExt = path.extname(req.file.originalname || '').toLowerCase();
+  if (fileExt !== '.csv') {
+    await fs.promises.unlink(req.file.path).catch(() => {});
+    return res.status(400).json({ error: 'Uploaded file must be a CSV.' });
+  }
+
+  if (req.file.size > MAX_CSV_SIZE) {
+    await fs.promises.unlink(req.file.path).catch(() => {});
+    return res.status(400).json({ error: 'CSV file exceeds maximum size of 50MB.' });
+  }
+
+  const rows = [];
+  try {
+    await new Promise((resolve, reject) => {
+      fs.createReadStream(req.file.path)
+        .pipe(csv({
+          mapHeaders: ({ header }) => (header ? header.trim() : ''),
+          skipLines: 0,
+          trim: true
+        }))
+        .on('data', (data) => rows.push(data))
+        .on('error', reject)
+        .on('end', resolve);
+    });
+  } catch (err) {
+    console.error('CSV upload parse error:', err);
+    await fs.promises.unlink(req.file.path).catch(() => {});
+    return res.status(400).json({ error: 'Unable to parse CSV file. Please ensure the file is well-formed and includes headers.' });
+  }
+
+  if (rows.length === 0) {
+    await fs.promises.unlink(req.file.path).catch(() => {});
+    return res.status(400).json({ error: 'CSV file contains no data rows.' });
+  }
+
+  const feedbackDocs = [];
+  const invalidRows = [];
+
+  rows.forEach((row, index) => {
+    const normalized = normalizeCsvRow(row);
+    const { reviewText, name, email, phone } = extractCsvReviewData(normalized);
+
+    if (!reviewText || typeof reviewText !== 'string' || !reviewText.trim()) {
+      invalidRows.push({ row: index + 2, error: 'Missing review text' });
+      return;
     }
-    if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded' });
+
+    feedbackDocs.push(analyzeReviewSubmission({ text: reviewText, name, email, phone }));
+  });
+
+  if (invalidRows.length > 0) {
+    await fs.promises.unlink(req.file.path).catch(() => {});
+    return res.status(400).json({
+      error: 'CSV contains malformed rows.',
+      details: invalidRows.slice(0, 10)
+    });
+  }
+
+  if (feedbackDocs.length === 0) {
+    await fs.promises.unlink(req.file.path).catch(() => {});
+    return res.status(400).json({ error: 'No valid feedback rows were found in the CSV file.' });
+  }
+
+  try {
+    const inserted = [];
+    const batchSize = 1000;
+    for (let i = 0; i < feedbackDocs.length; i += batchSize) {
+      const batch = feedbackDocs.slice(i, i + batchSize);
+      const savedBatch = await Feedback.insertMany(batch, { ordered: true });
+      inserted.push(...savedBatch);
     }
-    const results = [];
-    fs.createReadStream(req.file.path)
-        .pipe(csv())
-        .on('data', (data) => results.push(data))
-        .on('end', () => {
-            // Map CSV rows to Feedback documents
-            const feedbacks = results.map(row => ({
-                snippet: row.snippet || row.Snippet || '',
-                rating: Number(row.rating) || 0,
-                emotion: row.emotion || '',
-                confidence: Number(row.confidence) || 0,
-                sentiment: row.sentiment || '',
-                name: row.name || '',
-                email: row.email || '',
-                phone: row.phone || '',
-                createdAt: new Date()
-            }));
-            Feedback.insertMany(feedbacks)
-                .then(() => {
-                    // Clean up uploaded file
-                    fs.unlinkSync(req.file.path);
-                    res.json({ inserted: feedbacks.length });
-                })
-                .catch(err => {
-                    console.error('CSV upload error:', err);
-                    res.status(500).json({ error: 'Failed to insert feedback' });
-                });
-        });
+
+    await fs.promises.unlink(req.file.path).catch(() => {});
+    res.json({ inserted: inserted.length, totalRows: feedbackDocs.length });
+  } catch (err) {
+    console.error('CSV upload error:', err);
+    await fs.promises.unlink(req.file.path).catch(() => {});
+    const errorResponse = { error: 'Failed to save CSV feedback to the database.' };
+    if (err && err.name === 'ValidationError') {
+      errorResponse.details = err.errors;
+    }
+    res.status(500).json(errorResponse);
+  }
 });
 
 module.exports = router;
